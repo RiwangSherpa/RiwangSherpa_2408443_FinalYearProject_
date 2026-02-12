@@ -47,7 +47,7 @@ export default function Layout({ children }: LayoutProps) {
   const loadStreak = async () => {
     try {
       const response = await progressApi.getStreak()
-      setStreak(response.data.current_streak_days)
+      setStreak(response.data.streak || 0)
     } catch (error) {
       console.error('Failed to load streak:', error)
     }
@@ -58,30 +58,23 @@ export default function Layout({ children }: LayoutProps) {
     navigate('/login')
   }
 
-  const isPro = user?.subscription_plan === 'pro'
-
-  const isActive = (href: string) => {
-    if (href === '/dashboard') {
-      return location.pathname === '/dashboard' || location.pathname === '/'
-    }
-    return location.pathname.startsWith(href)
-  }
+  const isPro = user?.subscription_plan !== 'free'
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       {/* Top Navigation Bar */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+      <nav className="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left: Logo */}
             <div className="flex items-center">
-              <Logo size="lg" />
+              <Logo size="sm" />
             </div>
 
-            {/* Center: Navigation Links (Desktop) */}
+            {/* Center: Navigation (Desktop) */}
             <div className="hidden md:flex items-center space-x-1">
               {navigation.map((item) => {
-                const active = isActive(item.href)
+                const active = location.pathname === item.href
                 return (
                   <Link
                     key={item.name}
@@ -90,7 +83,7 @@ export default function Layout({ children }: LayoutProps) {
                       flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
                       ${active
                         ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
                       }
                     `}
                   >
@@ -103,13 +96,6 @@ export default function Layout({ children }: LayoutProps) {
 
             {/* Right: User Info & Actions */}
             <div className="flex items-center gap-4">
-              {/* Streak (Desktop) */}
-              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-orange-50 rounded-lg border border-orange-200">
-                <span className="text-lg">🔥</span>
-                <span className="text-sm font-semibold text-orange-700">{streak}</span>
-                <span className="text-xs text-orange-600">days</span>
-              </div>
-
               {/* Pro Badge / Upgrade Button */}
               <Link
                 to="/subscription"
@@ -120,26 +106,31 @@ export default function Layout({ children }: LayoutProps) {
                 }`}
               >
                 {isPro && <Crown className="w-4 h-4" />}
-                <span className="text-sm font-medium">{isPro ? 'Pro' : 'Free'}</span>
+                <span className="text-sm font-medium">
+                  {isPro ? 'Pro' : 'Upgrade'}
+                </span>
               </Link>
 
-              {/* User Avatar & Menu */}
+              {/* User Menu */}
               <div className="relative group">
-                <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <button 
+                  onClick={() => navigate('/profile')}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
                   <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                     {user?.email.charAt(0).toUpperCase() || 'U'}
                   </div>
-                  <span className="hidden sm:block text-sm font-medium text-gray-700">
+                  <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300">
                     {user?.full_name || user?.email.split('@')[0]}
                   </span>
                 </button>
 
                 {/* Dropdown Menu */}
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                   <div className="py-1">
                     <Link
                       to="/settings"
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       <User className="w-4 h-4" />
                       Settings
@@ -157,9 +148,9 @@ export default function Layout({ children }: LayoutProps) {
 
               {/* Mobile Menu Button */}
               <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100"
-              >
+                      onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                      className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
             </div>
@@ -173,11 +164,11 @@ export default function Layout({ children }: LayoutProps) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t border-gray-200 bg-white"
+              className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
               <div className="px-4 py-3 space-y-1">
                 {navigation.map((item) => {
-                  const active = isActive(item.href)
+                  const active = location.pathname === item.href
                   return (
                     <Link
                       key={item.name}
@@ -187,12 +178,12 @@ export default function Layout({ children }: LayoutProps) {
                         flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all
                         ${active
                           ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
-                          : 'text-gray-600 hover:bg-gray-100'
+                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                         }
                       `}
                     >
                       <item.icon className="w-5 h-5" />
-                      <span>{item.name}</span>
+                      {item.name}
                     </Link>
                   )
                 })}

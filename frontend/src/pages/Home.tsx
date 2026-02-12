@@ -64,10 +64,10 @@ export default function Home() {
     <div className="max-w-7xl mx-auto">
       {/* Welcome Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
           Welcome back{user?.full_name ? `, ${user.full_name.split(' ')[0]}` : ''}! 👋
         </h1>
-        <p className="text-gray-600">Here's your learning progress today</p>
+        <p className="text-gray-600 dark:text-gray-300">Here's your learning progress today</p>
       </div>
 
       {/* Metrics Cards */}
@@ -79,15 +79,15 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0 }}
           >
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 border-orange-200 dark:border-orange-800 transition-colors">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-orange-700 mb-1">Study Streak</p>
-                  <p className="text-3xl font-bold text-orange-900">{analytics.current_streak_days}</p>
-                  <p className="text-xs text-orange-600 mt-1">days in a row</p>
+                  <p className="text-sm font-medium text-orange-700 dark:text-orange-300 mb-1">Study Streak</p>
+                  <p className="text-3xl font-bold text-orange-900 dark:text-orange-100">{analytics.current_streak_days}</p>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">days in a row</p>
                 </div>
-                <div className="w-12 h-12 bg-orange-200 rounded-xl flex items-center justify-center">
-                  <Flame className="w-6 h-6 text-orange-600" />
+                <div className="w-12 h-12 bg-orange-200 dark:bg-orange-800 rounded-xl flex items-center justify-center">
+                  <Flame className="w-6 h-6 text-orange-600 dark:text-orange-400" />
                 </div>
               </div>
             </Card>
@@ -99,17 +99,17 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 border-blue-200 dark:border-blue-800 transition-colors">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-700 mb-1">Study Time</p>
-                  <p className="text-3xl font-bold text-blue-900">
+                  <p className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">Study Time</p>
+                  <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
                     {Math.round(analytics.total_study_time_minutes / 60)}h
                   </p>
-                  <p className="text-xs text-blue-600 mt-1">total hours</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">total hours</p>
                 </div>
-                <div className="w-12 h-12 bg-blue-200 rounded-xl flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 bg-blue-200 dark:bg-blue-800 rounded-xl flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
             </Card>
@@ -121,17 +121,17 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 border-green-200 dark:border-green-800 transition-colors">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-green-700 mb-1">Completed</p>
-                  <p className="text-3xl font-bold text-green-900">
+                  <p className="text-sm font-medium text-green-700 dark:text-green-300 mb-1">Completed</p>
+                  <p className="text-3xl font-bold text-green-900 dark:text-green-100">
                     {analytics.completed_goals}/{analytics.total_goals}
                   </p>
-                  <p className="text-xs text-green-600 mt-1">goals finished</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">goals finished</p>
                 </div>
-                <div className="w-12 h-12 bg-green-200 rounded-xl flex items-center justify-center">
-                  <Target className="w-6 h-6 text-green-600" />
+                <div className="w-12 h-12 bg-green-200 dark:bg-green-800 rounded-xl flex items-center justify-center">
+                  <Target className="w-6 h-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
             </Card>
@@ -143,22 +143,22 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 border-purple-200 dark:border-purple-800 transition-colors">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-sm font-medium text-purple-700 mb-1">Progress</p>
-                  <p className="text-3xl font-bold text-purple-900">{completionRate}%</p>
+                  <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">Progress</p>
+                  <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">{completionRate}%</p>
                 </div>
-                <div className="w-12 h-12 bg-purple-200 rounded-xl flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                <div className="w-12 h-12 bg-purple-200 dark:bg-purple-800 rounded-xl flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
-              <div className="w-full bg-purple-200 rounded-full h-2">
+              <div className="w-full bg-purple-200 dark:bg-purple-800 rounded-full h-2">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${completionRate}%` }}
                   transition={{ duration: 0.8, delay: 0.4 }}
-                  className="bg-purple-600 h-2 rounded-full"
+                  className="bg-purple-600 dark:bg-purple-500 h-2 rounded-full"
                 />
               </div>
             </Card>
@@ -170,7 +170,7 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Quick Actions */}
         <Card className="lg:col-span-1">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
           <div className="space-y-3">
             <Button
               variant="primary"
@@ -202,10 +202,10 @@ export default function Home() {
         {/* Recent Goals */}
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Goals</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Goals</h2>
             <Link
               to="/goals"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium flex items-center gap-1"
             >
               View all
               <ArrowRight className="w-4 h-4" />
@@ -213,8 +213,8 @@ export default function Home() {
           </div>
           {recentGoals.length === 0 ? (
             <div className="text-center py-8">
-              <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600 mb-4">No goals yet. Create your first goal!</p>
+              <BookOpen className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+              <p className="text-gray-600 dark:text-gray-300 mb-4">No goals yet. Create your first goal!</p>
               <Button onClick={() => navigate('/goals')}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Goal
@@ -231,12 +231,12 @@ export default function Home() {
                 >
                   <Link
                     to={`/roadmaps/${goal.id}`}
-                    className="block p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all group"
+                    className="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">
+                          <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
                             {goal.title}
                           </h3>
                           {goal.is_completed && (
@@ -244,12 +244,12 @@ export default function Home() {
                           )}
                         </div>
                         {goal.description && (
-                          <p className="text-sm text-gray-600 line-clamp-1">
+                          <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1">
                             {goal.description}
                           </p>
                         )}
                       </div>
-                      <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                      <ArrowRight className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
                     </div>
                   </Link>
                 </motion.div>

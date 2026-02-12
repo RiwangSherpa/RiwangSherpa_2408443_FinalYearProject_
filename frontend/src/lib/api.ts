@@ -153,5 +153,20 @@ export const subscriptionsApi = {
   getFeatures: () => api.get('/api/subscriptions/features'),
 }
 
+// Analytics API
+export const analyticsApi = {
+  getOverview: () => api.get('/api/analytics/overview'),
+  getCurrentGoal: () => api.get('/api/analytics/goals/current'),
+  getCurrentRoadmap: () => api.get('/api/analytics/roadmap/current'),
+  getQuizAnalytics: () => api.get('/api/analytics/quizzes'),
+}
+
+// Users API (Settings)
+export const usersApi = {
+  getTheme: () => api.get('/api/users/theme'),
+  updateTheme: (theme: string) => api.put('/api/users/theme', { theme }),
+  getSettings: () => api.get('/api/users/settings'),
+}
+
 export default api
 

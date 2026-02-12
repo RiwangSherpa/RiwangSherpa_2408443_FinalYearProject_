@@ -125,6 +125,8 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     subscription_plan = Column(SQLEnum(SubscriptionPlan), default=SubscriptionPlan.FREE)
     subscription_expires_at = Column(DateTime, nullable=True)
+    # UI preferences
+    theme_preference = Column(String(20), nullable=True, default="light")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     

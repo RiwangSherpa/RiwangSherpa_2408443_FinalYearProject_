@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useTheme } from '../contexts/ThemeContext'
 import { 
   Sparkles, 
   Target, 
@@ -17,6 +18,8 @@ import Logo from '../components/Logo'
 import Button from '../components/ui/Button'
 
 export default function Landing() {
+  const { theme } = useTheme()
+  
   const features = [
     {
       icon: Sparkles,
@@ -69,9 +72,17 @@ export default function Landing() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className={`min-h-screen transition-colors duration-200 ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
+        : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'
+    }`}>
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm">
+      <nav className={`sticky top-0 z-50 backdrop-blur-md border-b shadow-sm transition-colors ${
+        theme === 'dark' 
+          ? 'bg-gray-900/80 border-gray-700' 
+          : 'bg-white/80 border-gray-200'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Logo size="md" />
@@ -106,14 +117,18 @@ export default function Landing() {
               AI-Powered Learning Platform
             </motion.div>
             
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6">
+            <h1 className={`text-5xl md:text-6xl lg:text-7xl font-bold mb-6 ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
               Your AI-Powered
               <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Study Companion
               </span>
             </h1>
             
-            <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto mb-10">
+            <p className={`text-xl md:text-2xl max-w-3xl mx-auto mb-10 ${
+              theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+            }`}>
               Transform your learning journey with personalized roadmaps, intelligent quizzes, 
               and comprehensive progress tracking—all powered by AI.
             </p>
@@ -141,16 +156,28 @@ export default function Landing() {
               className="mt-16 grid grid-cols-3 gap-8 max-w-2xl mx-auto"
             >
               <div>
-                <div className="text-3xl font-bold text-gray-900">10K+</div>
-                <div className="text-sm text-gray-600">Active Learners</div>
+                <div className={`text-3xl font-bold ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>10K+</div>
+                <div className={`text-sm ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Active Learners</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-gray-900">50K+</div>
-                <div className="text-sm text-gray-600">Goals Completed</div>
+                <div className={`text-3xl font-bold ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>50K+</div>
+                <div className={`text-sm ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Goals Completed</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-gray-900">95%</div>
-                <div className="text-sm text-gray-600">Success Rate</div>
+                <div className={`text-3xl font-bold ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>95%</div>
+                <div className={`text-sm ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Success Rate</div>
               </div>
             </motion.div>
           </motion.div>
@@ -165,7 +192,9 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 bg-white">
+      <section className={`py-24 transition-colors ${
+        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -173,10 +202,14 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            <h2 className={`text-4xl md:text-5xl font-bold mb-4 ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
               Everything You Need to Succeed
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className={`text-xl max-w-2xl mx-auto ${
+              theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+            }`}>
               Powerful features designed to make your learning journey efficient and enjoyable
             </p>
           </motion.div>
@@ -191,15 +224,21 @@ export default function Landing() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
-                  className="p-6 rounded-2xl bg-gradient-to-br from-gray-50 to-white border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all"
+                  className={`p-6 rounded-2xl border hover:shadow-lg transition-all ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 hover:border-blue-500'
+                      : 'bg-gradient-to-br from-gray-50 to-white border-gray-200 hover:border-blue-300'
+                  }`}
                 >
                   <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center mb-4">
                     <Icon className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  <h3 className={`text-xl font-semibold mb-2 ${
+                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  }`}>
                     {feature.title}
                   </h3>
-                  <p className="text-gray-600">
+                  <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>
                     {feature.description}
                   </p>
                 </motion.div>

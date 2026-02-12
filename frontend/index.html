@@ -8,6 +8,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // Prevent flash of unstyled content by applying theme immediately
+      (function() {
+        const theme = localStorage.getItem('studyBuddyTheme');
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          // Default to light mode - ensure no dark class
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

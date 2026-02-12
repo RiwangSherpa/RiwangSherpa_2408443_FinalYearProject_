@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
-import { ToastProvider } from './contexts/ToastContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import Landing from './pages/Landing'
@@ -16,6 +16,7 @@ import ProgressDashboard from './pages/ProgressDashboard'
 import Productivity from './pages/Productivity'
 import Settings from './pages/Settings'
 import Subscription from './pages/Subscription'
+import ProfileAnalytics from './pages/ProfileAnalytics'
 
 // Default route handler - redirects based on auth status
 function DefaultRoute() {
@@ -38,46 +39,47 @@ function DefaultRoute() {
 
 function App() {
   return (
-    <ToastProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <ThemeProvider>
         <Router>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/landing" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          
-          {/* Default route - redirect to landing if not authenticated, dashboard if authenticated */}
-          <Route path="/" element={<DefaultRoute />} />
-          
-          {/* Protected routes */}
-          <Route
-            path="/*"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Routes>
-                    <Route path="/dashboard" element={<Home />} />
-                    <Route path="/goals" element={<Goals />} />
-                    <Route path="/roadmaps" element={<StudyRoadmap />} />
-                    <Route path="/roadmaps/:goalId" element={<StudyRoadmap />} />
-                    <Route path="/quiz" element={<Quiz />} />
-                    <Route path="/quiz/:goalId" element={<Quiz />} />
-                    <Route path="/progress" element={<ProgressDashboard />} />
-                    <Route path="/productivity" element={<Productivity />} />
-                    <Route path="/subscription" element={<Subscription />} />
-                    <Route path="/settings" element={<Settings />} />
-                  </Routes>
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </Router>
-      </AuthProvider>
-    </ToastProvider>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/landing" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        
+        {/* Default route - redirect to landing if not authenticated, dashboard if authenticated */}
+        <Route path="/" element={<DefaultRoute />} />
+        
+        {/* Protected routes */}
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Routes>
+                  <Route path="/dashboard" element={<Home />} />
+                  <Route path="/goals" element={<Goals />} />
+                  <Route path="/roadmaps" element={<StudyRoadmap />} />
+                  <Route path="/roadmaps/:goalId" element={<StudyRoadmap />} />
+                  <Route path="/quiz" element={<Quiz />} />
+                  <Route path="/quiz/:goalId" element={<Quiz />} />
+                  <Route path="/progress" element={<ProgressDashboard />} />
+                  <Route path="/productivity" element={<Productivity />} />
+                  <Route path="/subscription" element={<Subscription />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/profile" element={<ProfileAnalytics />} />
+                </Routes>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Router>
+      </ThemeProvider>
+    </AuthProvider>
   )
 }
 
