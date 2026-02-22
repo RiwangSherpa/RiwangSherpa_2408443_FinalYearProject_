@@ -13,34 +13,24 @@ class AIService:
         self.prompts = PromptTemplates()
     
     async def _call_ollama(self, prompt: str, temperature: float = 0.2) -> str:
-        """Make a request to Ollama API and return the full response"""
+        """Make a request to Ollama API and return full response"""
         try:
             response = requests.post(
                 OLLAMA_URL,
                 json={
                     "model": MODEL,
                     "prompt": prompt,
-                    "stream": True,
+                    "stream": False,
                     "options": {"temperature": temperature}
                 },
                 timeout=120
             )
             response.raise_for_status()
             
-            text = ""
-            for line in response.iter_lines():
-                if not line:
-                    continue
-                try:
-                    data = json.loads(line.decode())
-                    if "response" in data:
-                        text += data["response"]
-                    if data.get("done", False):
-                        break
-                except json.JSONDecodeError:
-                    continue
+            # Ollama returns a JSON object with a "response" field
+            response_data = response.json()
+            return response_data.get("response", "").strip()
             
-            return text.strip()
         except requests.exceptions.RequestException as e:
             raise Exception(f"Failed to connect to Ollama: {str(e)}")
         except Exception as e:
@@ -50,7 +40,7 @@ class AIService:
         self,
         goal_title: str,
         goal_description: str,
-        learning_style: str | None,
+        learning_style: str,
         num_steps: int
     ) -> Dict[str, Any]:
         """Generate a study roadmap using AI"""

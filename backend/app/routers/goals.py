@@ -9,6 +9,7 @@ from typing import List
 from app.database import get_db
 from app import models, schemas
 from app.routers.auth import get_current_user
+from app.services.gamification import GamificationService
 
 router = APIRouter()
 
@@ -111,7 +112,7 @@ async def complete_goal(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Mark a goal as completed"""
+    """Mark a goal as completed and trigger achievements"""
     db_goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -123,7 +124,33 @@ async def complete_goal(
         db_goal.is_completed = True
         db.commit()
         db.refresh(db_goal)
-        return db_goal
+        
+        # Update gamification stats and check achievements
+        gamification_service = GamificationService(db)
+        
+        # Get level before
+        old_level = gamification_service.get_level_progress(current_user.id)["current_level"]
+        
+        # Update goal completed stats
+        gamification_service.update_stats_from_activity(current_user.id, "goal_completed")
+        
+        # Check for new achievements
+        new_achievements = gamification_service.check_and_award_achievements(current_user.id)
+        
+        # Check for level up
+        new_level_progress = gamification_service.get_level_progress(current_user.id)
+        level_up_info = None
+        if new_level_progress["current_level"] > old_level:
+            level_up_info = {
+                "old_level": old_level,
+                "new_level": new_level_progress["current_level"]
+            }
+        
+        return {
+            "goal": db_goal,
+            "new_achievements": new_achievements,
+            "level_up": level_up_info
+        }
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to complete goal: {str(e)}")

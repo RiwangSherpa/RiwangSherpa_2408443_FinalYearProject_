@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { authApi } from '../lib/api'
 import { User } from '../types'
+import { useTimeTracker } from '../hooks/useTimeTracker'
 
 interface AuthContextType {
   user: User | null
@@ -19,6 +20,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Track time when user is authenticated
+  useTimeTracker(!!user && !!token)
 
   useEffect(() => {
     // Check for stored token on mount

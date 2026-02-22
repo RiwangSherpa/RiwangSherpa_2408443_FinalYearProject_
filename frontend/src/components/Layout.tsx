@@ -1,17 +1,19 @@
-import { ReactNode, useEffect, useState } from 'react'
+ import { ReactNode, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { 
-  LayoutDashboard, 
-  Target, 
-  BookOpen, 
-  HelpCircle, 
-  TrendingUp, 
+import {
+  LayoutDashboard,
+  Target,
+  BookOpen,
+  HelpCircle,
   Timer,
-  Crown,
-  LogOut,
+  Bot,
+  Trophy,
   User,
+  LogOut,
   Menu,
-  X
+  X,
+  ChevronDown,
+  Crown,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { progressApi } from '../lib/api'
@@ -27,8 +29,12 @@ const navigation = [
   { name: 'Goals', href: '/goals', icon: Target },
   { name: 'Roadmaps', href: '/roadmaps', icon: BookOpen },
   { name: 'Quiz', href: '/quiz', icon: HelpCircle },
-  { name: 'Progress', href: '/progress', icon: TrendingUp },
+]
+
+const moreNavigation = [
   { name: 'Productivity', href: '/productivity', icon: Timer },
+  { name: 'AI Tutor', href: '/tutor', icon: Bot, badge: 'AI' },
+  { name: 'Achievements', href: '/gamification', icon: Trophy },
 ]
 
 export default function Layout({ children }: LayoutProps) {
@@ -37,6 +43,8 @@ export default function Layout({ children }: LayoutProps) {
   const { user, logout, isAuthenticated } = useAuth()
   const [streak, setStreak] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -63,35 +71,85 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       {/* Top Navigation Bar */}
-      <nav className="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+      <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 shadow-sm transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left: Logo */}
             <div className="flex items-center">
-              <Logo size="sm" />
+              <Logo size="lg" />
             </div>
 
             {/* Center: Navigation (Desktop) */}
-            <div className="hidden md:flex items-center space-x-1">
-              {navigation.map((item) => {
-                const active = location.pathname === item.href
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
+            <div className="hidden lg:flex items-center justify-center flex-1">
+              <div className="flex items-center bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-1.5 space-x-1">
+                {navigation.map((item: { name: string; href: string; icon: React.ElementType }) => {
+                  const active = location.pathname === item.href
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`
+                        flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                        ${active
+                          ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50'
+                        }
+                      `}
+                    >
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.name}</span>
+                    </Link>
+                  )
+                })}
+                
+                {/* More Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+                    onBlur={() => setTimeout(() => setMoreMenuOpen(false), 200)}
                     className={`
-                      flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
-                      ${active
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm'
-                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                      flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                      ${moreMenuOpen
+                        ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50'
                       }
                     `}
                   >
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.name}</span>
-                  </Link>
-                )
-              })}
+                    <span>More</span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${moreMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {moreMenuOpen && (
+                    <div className="absolute top-full mt-2 right-0 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
+                      {moreNavigation.map((item: { name: string; href: string; icon: React.ElementType; badge?: string }) => {
+                        const active = location.pathname === item.href
+                        const Icon = item.icon
+                        return (
+                          <Link
+                            key={item.name}
+                            to={item.href}
+                            className={`
+                              flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all
+                              ${active
+                                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                              }
+                            `}
+                          >
+                            <Icon className="w-4 h-4" />
+                            <span className="flex-1">{item.name}</span>
+                            {item.badge && (
+                              <span className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded">
+                                {item.badge}
+                              </span>
+                            )}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Right: User Info & Actions */}
@@ -167,6 +225,7 @@ export default function Layout({ children }: LayoutProps) {
               className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
               <div className="px-4 py-3 space-y-1">
+                <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Main</p>
                 {navigation.map((item) => {
                   const active = location.pathname === item.href
                   return (
@@ -183,6 +242,28 @@ export default function Layout({ children }: LayoutProps) {
                       `}
                     >
                       <item.icon className="w-5 h-5" />
+                      {item.name}
+                    </Link>
+                  )
+                })}
+                <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mt-4">More</p>
+                {moreNavigation.map((item: { name: string; href: string; icon: React.ElementType }) => {
+                  const active = location.pathname === item.href
+                  const Icon = item.icon
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`
+                        flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all
+                        ${active
+                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }
+                      `}
+                    >
+                      <Icon className="w-5 h-5" />
                       {item.name}
                     </Link>
                   )

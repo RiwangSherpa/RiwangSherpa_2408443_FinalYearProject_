@@ -9,6 +9,7 @@ from typing import List
 from app.database import get_db
 from app import models, schemas
 from app.services.ai_service import ai_service
+from app.services.gamification import GamificationService
 from app.routers.auth import get_current_user
 
 router = APIRouter()
@@ -63,7 +64,7 @@ async def submit_quiz(
     questions = quiz_data.get("questions", [])
     answers = answers_data.get("answers", [])
     goal_id = quiz_data.get("goal_id") or answers_data.get("quiz_id")
-    topic = quiz_data.get("topic", "General")
+    topic = quiz_data.get("topic", "")
     
     if not goal_id:
         raise HTTPException(
@@ -78,6 +79,10 @@ async def submit_quiz(
     ).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
+    
+    # If topic is empty, use goal title
+    if not topic:
+        topic = goal.title
     
     if len(answers) != len(questions):
         raise HTTPException(
@@ -104,7 +109,9 @@ async def submit_quiz(
     
     score = (correct_count / len(questions)) * 100 if questions else 0
     
-    # Save quiz result to database
+    # Save quiz result to database and update gamification
+    new_achievements = []
+    level_up_info = None
     try:
         if questions:
             quiz_result = models.QuizResult(
@@ -117,16 +124,47 @@ async def submit_quiz(
             )
             db.add(quiz_result)
             db.commit()
+            
+            # Update gamification stats and check achievements
+            gamification_service = GamificationService(db)
+            
+            # Get level before
+            old_level = gamification_service.get_level_progress(current_user.id)["current_level"]
+            
+            # Update quiz stats
+            gamification_service.update_stats_from_activity(
+                current_user.id, 
+                "quiz_completed", 
+                len(questions)  # value is questions answered
+            )
+            
+            # Check for perfect quiz (100% score)
+            is_perfect = score == 100.0 and correct_count == len(questions)
+            if is_perfect:
+                gamification_service.update_stats_from_activity(current_user.id, "perfect_quiz")
+            
+            # Check for new achievements
+            new_achievements = gamification_service.check_and_award_achievements(current_user.id)
+            
+            # Check for level up
+            new_level_progress = gamification_service.get_level_progress(current_user.id)
+            if new_level_progress["current_level"] > old_level:
+                level_up_info = {
+                    "old_level": old_level,
+                    "new_level": new_level_progress["current_level"]
+                }
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to save quiz result: {str(e)}")
     
-    return schemas.QuizSubmitResponse(
-        score=score,
-        correct_answers=correct_count,
-        total_questions=len(questions),
-        feedback=feedback
-    )
+    return {
+        "score": score,
+        "correct_answers": correct_count,
+        "total_questions": len(questions),
+        "feedback": feedback,
+        "new_achievements": new_achievements,
+        "level_up": level_up_info
+    }
 
 @router.get("/results/{goal_id}", response_model=List[dict])
 async def get_quiz_results(
@@ -158,4 +196,89 @@ async def get_quiz_results(
         }
         for r in results
     ]
+
+@router.get("/{quiz_id}")
+async def get_quiz_by_id(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get a single quiz result with full details"""
+    # Get the quiz
+    quiz = db.query(models.QuizResult).filter(models.QuizResult.id == quiz_id).first()
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    
+    # Verify goal belongs to user
+    goal = db.query(models.Goal).filter(
+        models.Goal.id == quiz.goal_id,
+        models.Goal.user_id == current_user.id
+    ).first()
+    if not goal:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return {
+        "id": quiz.id,
+        "goal_id": quiz.goal_id,
+        "topic": quiz.topic,
+        "score": quiz.score,
+        "total_questions": quiz.total_questions,
+        "correct_answers": quiz.correct_answers,
+        "questions": quiz.questions,
+        "completed_at": quiz.completed_at
+    }
+
+@router.get("/my-quizzes", response_model=List[dict])
+async def get_my_quizzes(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get all quiz results for current user across all goals"""
+    results = db.query(models.QuizResult).join(
+        models.Goal, models.QuizResult.goal_id == models.Goal.id
+    ).filter(
+        models.Goal.user_id == current_user.id
+    ).order_by(models.QuizResult.completed_at.desc()).all()
+    
+    return [
+        {
+            "id": r.id,
+            "goal_id": r.goal_id,
+            "topic": r.topic,
+            "score": r.score,
+            "total_questions": r.total_questions,
+            "correct_answers": r.correct_answers,
+            "completed_at": r.completed_at
+        }
+        for r in results
+    ]
+
+
+@router.delete("/{quiz_id}")
+async def delete_quiz(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Delete a quiz result"""
+    # Verify quiz belongs to user through goal
+    quiz = db.query(models.QuizResult).filter(models.QuizResult.id == quiz_id).first()
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    
+    # Verify goal belongs to user
+    goal = db.query(models.Goal).filter(
+        models.Goal.id == quiz.goal_id,
+        models.Goal.user_id == current_user.id
+    ).first()
+    if not goal:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    try:
+        db.delete(quiz)
+        db.commit()
+        return {"message": "Quiz deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete quiz: {str(e)}")
 

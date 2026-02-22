@@ -123,36 +123,6 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Learning Style */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Learning Style
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { value: 'visual', label: 'Visual', desc: 'Learn through images and diagrams' },
-                  { value: 'text', label: 'Text-based', desc: 'Prefer reading and writing' },
-                  { value: 'practice', label: 'Hands-on', desc: 'Learn by doing exercises' },
-                  { value: 'balanced', label: 'Balanced', desc: 'Mix of all methods' }
-                ].map((style) => (
-                  <label key={style.value} className="relative">
-                    <input
-                      type="radio"
-                      name="learningStyle"
-                      value={style.value}
-                      checked={settings.learningStyle === style.value}
-                      onChange={(e) => setSettings(prev => ({ ...prev, learningStyle: e.target.value as any }))}
-                      className="sr-only peer"
-                    />
-                    <div className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-500/10 hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <p className="font-medium text-gray-900 dark:text-white">{style.label}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{style.desc}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
             {/* Account */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">

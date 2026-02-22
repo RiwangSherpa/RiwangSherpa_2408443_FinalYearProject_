@@ -169,16 +169,9 @@ async def forgot_password(
 
     reset_token = create_password_reset_token_for_user(db, user)
 
-    # Demo-only logging (replace with email service in prod)
+    # Log token generation (for development only - remove in production)
     logger.info("Password reset token generated for %s", user.email)
-    logger.debug("Reset token: %s", reset_token.token)
-
-    print("\n=== PASSWORD RESET TOKEN ===")
-    print(f"Email: {user.email}")
-    print(f"Token: {reset_token.token}")
-    print(f"Reset URL: http://localhost:5173/reset-password?token={reset_token.token}")
-    print(f"Expires: {reset_token.expires_at}")
-    print("===========================\n")
+    # In production, send email instead of logging token
 
     return {
         "message": "If the email exists, a password reset link has been sent."

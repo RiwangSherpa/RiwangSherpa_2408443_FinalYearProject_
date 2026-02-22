@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { CheckCircle2, Circle, Sparkles, Loader2, ArrowLeft, BookOpen } from 'lucide-react'
+import { CheckCircle2, Circle, Sparkles, Loader2, ArrowLeft, BookOpen, ChevronRight, MapPin, Trash2, Trophy, Star, Crown } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { goalsApi, roadmapsApi, aiApi } from '../lib/api'
+import { goalsApi, roadmapsApi } from '../lib/api'
 import { Goal, RoadmapStep } from '../types'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
+import Badge from '../components/ui/Badge'
 
 export default function StudyRoadmap() {
   const { goalId } = useParams<{ goalId?: string }>()
@@ -14,16 +15,42 @@ export default function StudyRoadmap() {
   const [steps, setSteps] = useState<RoadmapStep[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
-  const [explainingStepId, setExplainingStepId] = useState<number | null>(null)
-  const [explanation, setExplanation] = useState<string>('')
+  const [allRoadmaps, setAllRoadmaps] = useState<RoadmapStep[]>([])
+  const [loadingAllRoadmaps, setLoadingAllRoadmaps] = useState(false)
+  const [goalsMap, setGoalsMap] = useState<Record<number, Goal>>({})
+  const [newAchievements, setNewAchievements] = useState<any[]>([])
+  const [levelUpInfo, setLevelUpInfo] = useState<{oldLevel: number, newLevel: number} | null>(null)
+  const [showCelebration, setShowCelebration] = useState(false)
 
   useEffect(() => {
     if (goalId) {
       loadRoadmap()
     } else {
+      loadAllRoadmaps()
       setLoading(false)
     }
   }, [goalId])
+
+  const loadAllRoadmaps = async () => {
+    try {
+      setLoadingAllRoadmaps(true)
+      const [roadmapsRes, goalsRes] = await Promise.all([
+        roadmapsApi.getMyRoadmaps(),
+        goalsApi.getAll()
+      ])
+      setAllRoadmaps(roadmapsRes.data)
+      // Create a map of goal_id to goal for quick lookup
+      const goalsMapData = goalsRes.data.reduce((acc: Record<number, Goal>, g: Goal) => {
+        acc[g.id] = g
+        return acc
+      }, {})
+      setGoalsMap(goalsMapData)
+    } catch (error) {
+      console.error('Failed to load all roadmaps:', error)
+    } finally {
+      setLoadingAllRoadmaps(false)
+    }
+  }
 
   const loadRoadmap = async () => {
     if (!goalId) return
@@ -63,7 +90,21 @@ export default function StudyRoadmap() {
       if (isCompleted) {
         await roadmapsApi.uncompleteStep(stepId)
       } else {
-        await roadmapsApi.completeStep(stepId)
+        const response = await roadmapsApi.completeStep(stepId)
+        // Check for achievements and level up
+        if (response.data.goal_completed) {
+          setShowCelebration(true)
+          if (response.data.new_achievements?.length > 0) {
+            setNewAchievements(response.data.new_achievements)
+          }
+          if (response.data.level_up) {
+            setLevelUpInfo(response.data.level_up)
+          }
+          // Hide celebration after 5 seconds
+          setTimeout(() => {
+            setShowCelebration(false)
+          }, 5000)
+        }
       }
       // Reload roadmap to get updated goal status
       await loadRoadmap()
@@ -77,25 +118,31 @@ export default function StudyRoadmap() {
     }
   }
 
-  const handleExplainStep = async (stepId: number) => {
-    if (explainingStepId === stepId) {
-      setExplainingStepId(null)
-      setExplanation('')
+
+
+  const handleDeleteRoadmap = async (goalIdToDelete: number) => {
+    if (!confirm('Are you sure you want to delete this roadmap? This will delete all steps for this goal.')) {
       return
     }
-
     try {
-      setExplainingStepId(stepId)
-      const response = await aiApi.explainStep(stepId)
-      setExplanation(response.data.explanation)
+      await roadmapsApi.delete(goalIdToDelete)
+      // Refresh the list
+      loadAllRoadmaps()
     } catch (error) {
-      console.error('Failed to get explanation:', error)
-      alert('Failed to get explanation. Please try again.')
+      console.error('Failed to delete roadmap:', error)
+      alert('Failed to delete roadmap. Please try again.')
     }
   }
-
-  const completedSteps = steps.filter(s => s.is_completed).length
-  const progressPercentage = steps.length > 0 ? (completedSteps / steps.length) * 100 : 0
+  const groupRoadmapsByGoal = (steps: RoadmapStep[]) => {
+    const grouped = steps.reduce((acc, step) => {
+      if (!acc[step.goal_id]) {
+        acc[step.goal_id] = []
+      }
+      acc[step.goal_id].push(step)
+      return acc
+    }, {} as Record<number, RoadmapStep[]>)
+    return grouped
+  }
 
   if (loading) {
     return (
@@ -105,22 +152,137 @@ export default function StudyRoadmap() {
     )
   }
 
+  // Show all roadmaps when no goal is selected
   if (!goalId) {
+    const groupedRoadmaps = groupRoadmapsByGoal(allRoadmaps)
+    const goalIds = Object.keys(groupedRoadmaps).map(Number)
+
     return (
       <div className="max-w-4xl mx-auto">
-        <Card>
-          <div className="text-center py-12">
-            <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">No Goal Selected</h2>
-            <p className="text-gray-600 mb-6">Please select a goal to view its roadmap.</p>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Roadmaps</h1>
+          <p className="text-gray-600">View all your study roadmaps across different goals</p>
+        </div>
+
+        {/* Create New Roadmap Section */}
+        <Card className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-1">Create a New Roadmap</h2>
+              <p className="text-gray-600">Select a goal to generate a personalized study roadmap</p>
+            </div>
             <Button onClick={() => navigate('/goals')}>
               Browse Goals
             </Button>
           </div>
         </Card>
+
+        {/* All Roadmaps List */}
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Roadmaps</h2>
+          
+          {loadingAllRoadmaps ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          ) : goalIds.length === 0 ? (
+            <Card>
+              <div className="text-center py-12">
+                <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Roadmaps Yet</h3>
+                <p className="text-gray-600 mb-4">You haven't generated any study roadmaps yet.</p>
+                <Button onClick={() => navigate('/goals')}>
+                  Create Your First Roadmap
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            goalIds.map((gid) => {
+              const goalData = goalsMap[gid]
+              const goalTitle = goalData?.title || `Goal #${gid}`
+              const goalSteps = groupedRoadmaps[gid]
+              const completedCount = goalSteps.filter((s: RoadmapStep) => s.is_completed).length
+              const totalCount = goalSteps.length
+              const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+
+              return (
+                <motion.div
+                  key={gid}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Card className="hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3 flex-1">
+                        <MapPin className="w-5 h-5 text-blue-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {goalTitle}
+                        </h3>
+                        <Badge variant={progress === 100 ? 'success' : progress > 0 ? 'warning' : 'default'}>
+                          {completedCount}/{totalCount} steps
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteRoadmap(gid)
+                          }}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => navigate(`/roadmaps/${gid}`)}
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                      <div
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 h-2 rounded-full transition-all"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+
+                    {/* Preview Steps */}
+                    <div className="space-y-2">
+                      {goalSteps.slice(0, 3).map((step) => (
+                        <div key={step.id} className="flex items-center gap-2 text-sm">
+                          {step.is_completed ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <Circle className="w-4 h-4 text-gray-400" />
+                          )}
+                          <span className={step.is_completed ? 'text-gray-500 line-through' : 'text-gray-700'}>
+                            Step {step.step_number}: {step.title}
+                          </span>
+                        </div>
+                      ))}
+                      {goalSteps.length > 3 && (
+                        <p className="text-sm text-gray-500 pl-6">
+                          +{goalSteps.length - 3} more steps
+                        </p>
+                      )}
+                    </div>
+                  </Card>
+                </motion.div>
+              )
+            })
+          )}
+        </div>
       </div>
     )
   }
+
+  const completedSteps = steps.filter(s => s.is_completed).length
+  const progressPercentage = steps.length > 0 ? (completedSteps / steps.length) * 100 : 0
 
   if (!goal) {
     return (
@@ -143,11 +305,11 @@ export default function StudyRoadmap() {
       <div className="mb-8">
         <Button
           variant="ghost"
-          onClick={() => navigate('/goals')}
+          onClick={() => navigate('/roadmaps')}
           className="mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Goals
+          Back to Roadmaps
         </Button>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">{goal.title}</h1>
         {goal.description && (
@@ -173,6 +335,93 @@ export default function StudyRoadmap() {
             />
           </div>
         </Card>
+      )}
+
+      {/* Achievement Notifications */}
+      {showCelebration && (
+        <>
+          {/* Level Up Banner */}
+          {levelUpInfo && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl p-6 mb-6 text-white shadow-lg"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+                    <Crown className="w-7 h-7 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">Level Up!</h3>
+                    <p className="text-white/80">You reached level {levelUpInfo.newLevel}</p>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-white/60 mb-1">Level</p>
+                  <p className="text-3xl font-bold">{levelUpInfo.newLevel}</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Achievements Banner */}
+          {newAchievements.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 rounded-2xl p-6 mb-6 text-white shadow-lg"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-white/20 rounded-xl">
+                  <Trophy className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-xl font-bold">Achievement{newAchievements.length > 1 ? 's' : ''} Unlocked!</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {newAchievements.map((achievement, idx) => (
+                  <div key={idx} className="bg-white/95 rounded-xl p-4 shadow">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        achievement.difficulty === 'gold' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
+                        achievement.difficulty === 'silver' ? 'bg-gradient-to-r from-gray-300 to-gray-400' :
+                        'bg-gradient-to-r from-amber-600 to-amber-700'
+                      }`}>
+                        <Star className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{achievement.name}</p>
+                        <p className="text-xs text-emerald-600 font-medium">+{achievement.xp_reward} XP</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Goal Completed Message */}
+          {!levelUpInfo && newAchievements.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 mb-6 text-white shadow-lg"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+                  <CheckCircle2 className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">Goal Completed!</h3>
+                  <p className="text-white/80">Congratulations on completing all roadmap steps!</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </>
       )}
 
       {/* Generate Roadmap Button */}
@@ -244,24 +493,6 @@ export default function StudyRoadmap() {
                     </div>
                   </div>
                   
-                  {/* AI Explanation */}
-                  <button
-                    onClick={() => handleExplainStep(step.id)}
-                    className="mt-3 flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    {explainingStepId === step.id ? 'Hide' : 'Why this step?'}
-                  </button>
-                  
-                  {explainingStepId === step.id && explanation && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200"
-                    >
-                      <p className="text-sm text-gray-700">{explanation}</p>
-                    </motion.div>
-                  )}
                 </div>
               </div>
               </Card>

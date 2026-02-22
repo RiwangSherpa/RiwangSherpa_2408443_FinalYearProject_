@@ -31,7 +31,14 @@ def init_db():
     """Initialize database tables"""
     from app.models import (
         User, Goal, RoadmapStep, Progress, QuizResult, 
-        ProductivitySession, StudyStreak, PasswordResetToken
+        ProductivitySession, StudyStreak, PasswordResetToken,
+        # New models for advanced features
+        Flashcard, FlashcardReview,  # Spaced Repetition
+        Concept, UserConceptMastery, ConceptPrerequisite, GoalConcept,  # Adaptive Learning
+        ConversationSession, ConversationMessage,  # AI Tutor
+        Achievement, UserAchievement, UserStats,  # Gamification
+        KnowledgeNode, KnowledgeEdge,  # Knowledge Graph
+        AIResponseCache  # AI Caching
     )
     Base.metadata.create_all(bind=engine)
 

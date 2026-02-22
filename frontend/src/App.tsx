@@ -12,11 +12,13 @@ import Home from './pages/Home'
 import Goals from './pages/Goals'
 import StudyRoadmap from './pages/StudyRoadmap'
 import Quiz from './pages/Quiz'
-import ProgressDashboard from './pages/ProgressDashboard'
 import Productivity from './pages/Productivity'
 import Settings from './pages/Settings'
 import Subscription from './pages/Subscription'
 import ProfileAnalytics from './pages/ProfileAnalytics'
+// New feature pages
+import Tutor from './pages/Tutor'
+import Gamification from './pages/Gamification'
 
 // Default route handler - redirects based on auth status
 function DefaultRoute() {
@@ -66,11 +68,13 @@ function App() {
                   <Route path="/roadmaps/:goalId" element={<StudyRoadmap />} />
                   <Route path="/quiz" element={<Quiz />} />
                   <Route path="/quiz/:goalId" element={<Quiz />} />
-                  <Route path="/progress" element={<ProgressDashboard />} />
                   <Route path="/productivity" element={<Productivity />} />
                   <Route path="/subscription" element={<Subscription />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/profile" element={<ProfileAnalytics />} />
+                  {/* Feature routes */}
+                  <Route path="/tutor" element={<Tutor />} />
+                  <Route path="/gamification" element={<Gamification />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

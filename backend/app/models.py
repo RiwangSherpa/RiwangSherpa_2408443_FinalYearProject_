@@ -149,3 +149,333 @@ class PasswordResetToken(Base):
     # Relationships
     user = relationship("User", back_populates="password_reset_tokens")
 
+
+# ============================================================================
+# SPACED REPETITION SYSTEM MODELS
+# ============================================================================
+
+class Flashcard(Base):
+    """Flashcards for spaced repetition learning"""
+    __tablename__ = "flashcards"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    goal_id = Column(Integer, ForeignKey("goals.id"), nullable=True)
+    
+    # Content
+    front_content = Column(Text, nullable=False)  # Question/Prompt
+    back_content = Column(Text, nullable=False)   # Answer/Explanation
+    tags = Column(JSON, default=list)  # Topics/tags for categorization
+    
+    # SRS Algorithm Fields (SM-2)
+    ease_factor = Column(Float, default=2.5)  # EF in SM-2
+    interval_days = Column(Float, default=0.0)  # Current interval
+    repetition_count = Column(Integer, default=0)  # Number of successful reviews
+    
+    # Scheduling
+    next_review_date = Column(DateTime, nullable=True)
+    last_reviewed_at = Column(DateTime, nullable=True)
+    
+    # Statistics
+    total_reviews = Column(Integer, default=0)
+    correct_reviews = Column(Integer, default=0)
+    
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    user = relationship("User")
+    goal = relationship("Goal")
+    review_history = relationship("FlashcardReview", back_populates="flashcard", cascade="all, delete-orphan")
+
+
+class FlashcardReview(Base):
+    """Individual review history for flashcards"""
+    __tablename__ = "flashcard_reviews"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    flashcard_id = Column(Integer, ForeignKey("flashcards.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    # Review data
+    quality_score = Column(Integer, nullable=False)  # 0-5 rating (SM-2)
+    reviewed_at = Column(DateTime, server_default=func.now())
+    
+    # Algorithm state at time of review
+    previous_interval = Column(Float, nullable=False)
+    new_interval = Column(Float, nullable=False)
+    previous_ease_factor = Column(Float, nullable=False)
+    new_ease_factor = Column(Float, nullable=False)
+    
+    # Relationships
+    flashcard = relationship("Flashcard", back_populates="review_history")
+
+
+# ============================================================================
+# ADAPTIVE LEARNING & KNOWLEDGE TRACKING MODELS
+# ============================================================================
+
+class Concept(Base):
+    """Learning concepts/knowledge nodes for adaptive learning"""
+    __tablename__ = "concepts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    domain = Column(String(100), nullable=True)  # e.g., "Python", "Mathematics"
+    difficulty_level = Column(Integer, default=1)  # 1-10
+    
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class UserConceptMastery(Base):
+    """Track user's mastery level of individual concepts"""
+    __tablename__ = "user_concept_mastery"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=False)
+    
+    # Mastery tracking (0-100%)
+    mastery_score = Column(Float, default=0.0)  # Bayesian estimate
+    confidence = Column(Float, default=0.1)  # Confidence in estimate
+    
+    # Performance history
+    attempts_count = Column(Integer, default=0)
+    correct_count = Column(Integer, default=0)
+    
+    # Last interaction
+    last_attempt_at = Column(DateTime, nullable=True)
+    
+    # Adaptive difficulty tracking
+    suggested_difficulty = Column(String(20), default="easy")  # easy, medium, hard
+    
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class ConceptPrerequisite(Base):
+    """Prerequisite relationships between concepts (knowledge graph edges)"""
+    __tablename__ = "concept_prerequisites"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=False)
+    prerequisite_concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=False)
+    strength = Column(Float, default=1.0)  # How strong the prerequisite relationship is
+    
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class GoalConcept(Base):
+    """Link goals to required concepts"""
+    __tablename__ = "goal_concepts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    goal_id = Column(Integer, ForeignKey("goals.id"), nullable=False)
+    concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=False)
+    importance_weight = Column(Float, default=1.0)  # How important this concept is for the goal
+    
+    created_at = Column(DateTime, server_default=func.now())
+
+
+# ============================================================================
+# AI CONVERSATION MODELS
+# ============================================================================
+
+class ConversationSession(Base):
+    """AI tutoring conversation sessions"""
+    __tablename__ = "conversation_sessions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    goal_id = Column(Integer, ForeignKey("goals.id"), nullable=True)
+    step_id = Column(Integer, ForeignKey("roadmap_steps.id"), nullable=True)
+    
+    # Session metadata
+    title = Column(String(200), nullable=True)  # Auto-generated or user-set
+    is_active = Column(Boolean, default=True)
+    
+    # Context summary for long conversations (to manage token limits)
+    context_summary = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    messages = relationship("ConversationMessage", back_populates="session", cascade="all, delete-orphan", order_by="ConversationMessage.created_at")
+
+
+class ConversationMessage(Base):
+    """Individual messages in conversations"""
+    __tablename__ = "conversation_messages"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("conversation_sessions.id"), nullable=False)
+    
+    # Message content
+    role = Column(String(20), nullable=False)  # "user", "assistant", "system"
+    content = Column(Text, nullable=False)
+    
+    # AI metadata
+    model_used = Column(String(50), nullable=True)  # Which model generated this
+    tokens_used = Column(Integer, nullable=True)  # Token count if available
+    
+    # User feedback
+    was_helpful = Column(Boolean, nullable=True)  # User rating
+    
+    created_at = Column(DateTime, server_default=func.now())
+    
+    # Relationships
+    session = relationship("ConversationSession", back_populates="messages")
+
+
+# ============================================================================
+# GAMIFICATION & ACHIEVEMENT MODELS
+# ============================================================================
+
+class Achievement(Base):
+    """Achievement definitions"""
+    __tablename__ = "achievements"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False, unique=True)
+    description = Column(Text, nullable=False)
+    icon = Column(String(50), nullable=True)  # Icon identifier
+    
+    # Trigger conditions (stored as JSON for flexibility)
+    trigger_condition = Column(JSON, nullable=False)  # e.g., {"type": "quiz_score", "threshold": 100}
+    
+    # Rewards
+    xp_reward = Column(Integer, default=0)
+    
+    # Category
+    category = Column(String(50), default="general")  # study, quiz, streak, etc.
+    difficulty = Column(String(20), default="bronze")  # bronze, silver, gold, platinum
+    
+    is_hidden = Column(Boolean, default=False)  # Secret achievements
+    
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class UserAchievement(Base):
+    """User's earned achievements"""
+    __tablename__ = "user_achievements"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    achievement_id = Column(Integer, ForeignKey("achievements.id"), nullable=False)
+    
+    earned_at = Column(DateTime, server_default=func.now())
+    
+    # Relationships
+    achievement = relationship("Achievement")
+
+
+class UserStats(Base):
+    """Aggregated user statistics for gamification"""
+    __tablename__ = "user_stats"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
+    
+    # XP and Level
+    total_xp = Column(Integer, default=0)
+    current_level = Column(Integer, default=1)
+    
+    # Study statistics
+    total_study_sessions = Column(Integer, default=0)
+    total_study_hours = Column(Float, default=0.0)
+    
+    # Quiz statistics
+    total_quizzes_taken = Column(Integer, default=0)
+    total_questions_answered = Column(Integer, default=0)
+    perfect_quiz_count = Column(Integer, default=0)
+    
+    # Streak tracking
+    longest_streak = Column(Integer, default=0)
+    
+    # Goal statistics
+    goals_completed = Column(Integer, default=0)
+    roadmap_steps_completed = Column(Integer, default=0)
+    
+    # Flashcard statistics
+    flashcards_mastered = Column(Integer, default=0)  # Cards with interval > 21 days
+    
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime, server_default=func.now())
+
+
+# ============================================================================
+# KNOWLEDGE GRAPH MODELS
+# ============================================================================
+
+class KnowledgeNode(Base):
+    """Nodes in the knowledge graph"""
+    __tablename__ = "knowledge_nodes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    goal_id = Column(Integer, ForeignKey("goals.id"), nullable=False)
+    
+    # Node content
+    label = Column(String(200), nullable=False)
+    node_type = Column(String(50), default="concept")  # concept, skill, resource
+    description = Column(Text, nullable=True)
+    
+    # Visual properties
+    x_position = Column(Float, nullable=True)
+    y_position = Column(Float, nullable=True)
+    color = Column(String(7), nullable=True)  # Hex color
+    
+    # Learning state
+    mastery_level = Column(Float, default=0.0)  # 0-1
+    is_unlocked = Column(Boolean, default=False)  # Prerequisites met?
+    
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class KnowledgeEdge(Base):
+    """Edges connecting knowledge nodes"""
+    __tablename__ = "knowledge_edges"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    goal_id = Column(Integer, ForeignKey("goals.id"), nullable=False)
+    
+    source_node_id = Column(Integer, ForeignKey("knowledge_nodes.id"), nullable=False)
+    target_node_id = Column(Integer, ForeignKey("knowledge_nodes.id"), nullable=False)
+    
+    edge_type = Column(String(50), default="prerequisite")  # prerequisite, related, sequence
+    strength = Column(Float, default=1.0)  # 0-1 edge strength
+    
+    created_at = Column(DateTime, server_default=func.now())
+
+
+# ============================================================================
+# AI RESPONSE CACHE & VALIDATION
+# ============================================================================
+
+class AIResponseCache(Base):
+    """Cache AI responses to reduce API calls"""
+    __tablename__ = "ai_response_cache"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    cache_key = Column(String(255), nullable=False, index=True)  # Hash of prompt
+    prompt_hash = Column(String(64), nullable=False)  # SHA256 of full prompt
+    
+    # Response data
+    response_type = Column(String(50), nullable=False)  # roadmap, quiz, explanation
+    response_data = Column(JSON, nullable=False)
+    
+    # Metadata
+    model_used = Column(String(50), nullable=False)
+    tokens_used = Column(Integer, nullable=True)
+    
+    # Cache management
+    created_at = Column(DateTime, server_default=func.now())
+    expires_at = Column(DateTime, nullable=True)  # Optional expiration
+    access_count = Column(Integer, default=1)
+    last_accessed_at = Column(DateTime, server_default=func.now())
+
+
+# ============================================================================
+
+

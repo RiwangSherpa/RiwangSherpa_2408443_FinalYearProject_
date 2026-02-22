@@ -2,9 +2,25 @@
 Configuration settings using Pydantic Settings
 """
 
+import os
+import secrets
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from pathlib import Path
 from typing import Optional
+
+
+# Generate a secure secret key if not provided
+def get_secret_key() -> str:
+    """Get or generate a secure JWT secret key"""
+    key = os.getenv("SECRET_KEY")
+    if key:
+        return key
+    # Generate and log a new key (user should save this to .env)
+    new_key = secrets.token_hex(32)
+    print(f"WARNING: Generated temporary SECRET_KEY. Set SECRET_KEY={new_key} in .env for persistence")
+    return new_key
+
 
 class Settings(BaseSettings):
     """Application settings"""
@@ -16,8 +32,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./database/study_buddy.db"
     LOG_LEVEL: str = "INFO"
     
-    # JWT Authentication
-    SECRET_KEY: str = "your-secret-key-change-in-production"  # Change in production!
+    # JWT Authentication - SECURE: Loaded from environment or auto-generated
+    SECRET_KEY: str = Field(default_factory=get_secret_key)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     OPENAI_API_KEY: Optional[str] = None
@@ -25,6 +41,11 @@ class Settings(BaseSettings):
 
     # Password Reset
     PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = 24
+    
+    # Rate Limiting
+    RATE_LIMIT_REQUESTS_PER_MINUTE: int = 60
+    RATE_LIMIT_AI_REQUESTS_PER_HOUR: int = 100  # Pro tier
+    RATE_LIMIT_AI_REQUESTS_PER_HOUR_FREE: int = 10  # Free tier
     
     class Config:
         env_file = ".env"

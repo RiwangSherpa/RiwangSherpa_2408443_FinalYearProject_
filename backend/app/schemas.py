@@ -190,6 +190,21 @@ class AIExplanationResponse(BaseModel):
     prompt_used: Optional[str] = None
 
 # -------------------------------------------------
+# Flashcard Schemas
+# -------------------------------------------------
+
+class FlashcardCreate(BaseModel):
+    front_content: str = Field(..., min_length=1)
+    back_content: str = Field(..., min_length=1)
+    goal_id: Optional[int] = None
+    tags: Optional[List[str]] = None
+
+
+class ReviewRequest(BaseModel):
+    quality_score: int = Field(..., ge=0, le=5)
+
+
+# -------------------------------------------------
 # Analytics Schemas
 # -------------------------------------------------
 

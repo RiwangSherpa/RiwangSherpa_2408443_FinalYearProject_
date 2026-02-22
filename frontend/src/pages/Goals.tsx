@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, BookOpen, Target, Sparkles, Loader2 } from 'lucide-react'
+import { Plus, BookOpen, Target, Sparkles, Loader2, Trash2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { goalsApi, roadmapsApi } from '../lib/api'
 import { Goal, RoadmapStep } from '../types'
@@ -69,6 +69,20 @@ export default function Goals() {
     } catch (error) {
       console.error('Failed to create goal:', error)
       alert('Failed to create goal. Please try again.')
+    }
+  }
+
+  const handleDeleteGoal = async (goalId: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Are you sure you want to delete this goal? This will also delete its roadmap and quizzes.')) {
+      return
+    }
+    try {
+      await goalsApi.delete(goalId)
+      loadGoals()
+    } catch (error) {
+      console.error('Failed to delete goal:', error)
+      alert('Failed to delete goal. Please try again.')
     }
   }
 
@@ -239,6 +253,13 @@ export default function Goals() {
                     <span className="text-xs text-gray-500">
                       {new Date(goal.created_at).toLocaleDateString()}
                     </span>
+                    <button
+                      onClick={(e) => handleDeleteGoal(goal.id, e)}
+                      className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors"
+                      title="Delete goal"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                   <div className="flex gap-2">
                     <Button

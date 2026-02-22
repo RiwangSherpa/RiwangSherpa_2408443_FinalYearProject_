@@ -61,114 +61,118 @@ export default function Home() {
   const recentGoals = goals.slice(0, 3)
 
   return (
-    <div className="max-w-7xl mx-auto">
-      {/* Welcome Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Welcome back{user?.full_name ? `, ${user.full_name.split(' ')[0]}` : ''}! 👋
-        </h1>
-        <p className="text-gray-600 dark:text-gray-300">Here's your learning progress today</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-indigo-950/20 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}!
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400">
+            Here's your learning progress overview
+          </p>
+        </motion.div>
 
-      {/* Metrics Cards */}
-      {analytics && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Study Streak */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0 }}
-          >
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 border-orange-200 dark:border-orange-800 transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-orange-700 dark:text-orange-300 mb-1">Study Streak</p>
-                  <p className="text-3xl font-bold text-orange-900 dark:text-orange-100">{analytics.current_streak_days}</p>
-                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">days in a row</p>
-                </div>
-                <div className="w-12 h-12 bg-orange-200 dark:bg-orange-800 rounded-xl flex items-center justify-center">
-                  <Flame className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+        {/* Metrics Cards */}
+        {analytics && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Study Streak */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0 }}
+            >
+              <div className="bg-white dark:bg-gray-800/80 backdrop-blur rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700/50 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-1">Study Streak</p>
+                    <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{analytics.current_streak_days}</p>
+                    <p className="text-xs text-orange-500 mt-1">days in a row</p>
+                  </div>
+                  <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
+                    <Flame className="w-6 h-6 text-orange-600" />
+                  </div>
                 </div>
               </div>
-            </Card>
-          </motion.div>
+            </motion.div>
 
-          {/* Study Time */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 border-blue-200 dark:border-blue-800 transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">Study Time</p>
-                  <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
-                    {Math.round(analytics.total_study_time_minutes / 60)}h
-                  </p>
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">total hours</p>
-                </div>
-                <div className="w-12 h-12 bg-blue-200 dark:bg-blue-800 rounded-xl flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            {/* Study Time */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <div className="bg-white dark:bg-gray-800/80 backdrop-blur rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700/50 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">Study Time</p>
+                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                      {Math.floor(analytics.total_study_time_minutes / 60)}h {analytics.total_study_time_minutes % 60}m
+                    </p>
+                    <p className="text-xs text-blue-500 mt-1">total time</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                    <Clock className="w-6 h-6 text-blue-600" />
+                  </div>
                 </div>
               </div>
-            </Card>
-          </motion.div>
+            </motion.div>
 
-          {/* Completed Goals */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 border-green-200 dark:border-green-800 transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-700 dark:text-green-300 mb-1">Completed</p>
-                  <p className="text-3xl font-bold text-green-900 dark:text-green-100">
-                    {analytics.completed_goals}/{analytics.total_goals}
-                  </p>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">goals finished</p>
-                </div>
-                <div className="w-12 h-12 bg-green-200 dark:bg-green-800 rounded-xl flex items-center justify-center">
-                  <Target className="w-6 h-6 text-green-600 dark:text-green-400" />
+            {/* Completed Goals */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <div className="bg-white dark:bg-gray-800/80 backdrop-blur rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700/50 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mb-1">Completed</p>
+                    <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                      {analytics.completed_goals}/{analytics.total_goals}
+                    </p>
+                    <p className="text-xs text-emerald-500 mt-1">goals finished</p>
+                  </div>
+                  <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+                    <Target className="w-6 h-6 text-emerald-600" />
+                  </div>
                 </div>
               </div>
-            </Card>
-          </motion.div>
+            </motion.div>
 
-          {/* Overall Progress */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 border-purple-200 dark:border-purple-800 transition-colors">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">Progress</p>
-                  <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">{completionRate}%</p>
+            {/* Overall Progress */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <div className="bg-white dark:bg-gray-800/80 backdrop-blur rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700/50 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-medium text-purple-600 dark:text-purple-400 mb-1">Progress</p>
+                    <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{completionRate}%</p>
+                  </div>
+                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-purple-600" />
+                  </div>
                 </div>
-                <div className="w-12 h-12 bg-purple-200 dark:bg-purple-800 rounded-xl flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                <div className="w-full bg-purple-100 dark:bg-purple-900/30 rounded-full h-2">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${completionRate}%` }}
+                    transition={{ duration: 0.8, delay: 0.4 }}
+                    className="bg-purple-500 h-2 rounded-full"
+                  />
                 </div>
               </div>
-              <div className="w-full bg-purple-200 dark:bg-purple-800 rounded-full h-2">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${completionRate}%` }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                  className="bg-purple-600 dark:bg-purple-500 h-2 rounded-full"
-                />
-              </div>
-            </Card>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Quick Actions & Recent Goals */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Quick Actions */}
+            </motion.div>
+          </div>
+        )}
+        
         <Card className="lg:col-span-1">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
           <div className="space-y-3">

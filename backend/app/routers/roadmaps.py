@@ -10,6 +10,7 @@ from app.database import get_db
 from app import models, schemas
 from app.services.ai_service import ai_service
 from app.routers.auth import get_current_user
+from app.services.gamification import GamificationService
 
 router = APIRouter()
 
@@ -116,13 +117,44 @@ async def complete_step(
             models.RoadmapStep.goal_id == goal.id
         ).all()
         
+        goal_completed = False
         if all_steps and all(step_item.is_completed for step_item in all_steps):
             goal.is_completed = True
             goal.updated_at = datetime.utcnow()
+            goal_completed = True
         
         db.commit()
+        
+        # If goal was completed, trigger gamification
+        new_achievements = []
+        level_up_info = None
+        if goal_completed:
+            gamification_service = GamificationService(db)
+            
+            # Get level before
+            old_level = gamification_service.get_level_progress(current_user.id)["current_level"]
+            
+            # Update goal completed stats
+            gamification_service.update_stats_from_activity(current_user.id, "goal_completed")
+            
+            # Check for new achievements
+            new_achievements = gamification_service.check_and_award_achievements(current_user.id)
+            
+            # Check for level up
+            new_level_progress = gamification_service.get_level_progress(current_user.id)
+            if new_level_progress["current_level"] > old_level:
+                level_up_info = {
+                    "old_level": old_level,
+                    "new_level": new_level_progress["current_level"]
+                }
+        
         db.refresh(step)
-        return step
+        return {
+            "step": step,
+            "goal_completed": goal_completed,
+            "new_achievements": new_achievements,
+            "level_up": level_up_info
+        }
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to update step: {str(e)}")
@@ -156,4 +188,46 @@ async def uncomplete_step(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to update step: {str(e)}")
+
+
+@router.get("/my-roadmaps", response_model=List[schemas.RoadmapStepResponse])
+async def get_my_roadmaps(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get all roadmap steps for current user across all goals"""
+    steps = db.query(models.RoadmapStep).join(
+        models.Goal, models.RoadmapStep.goal_id == models.Goal.id
+    ).filter(
+        models.Goal.user_id == current_user.id
+    ).order_by(models.Goal.created_at.desc(), models.RoadmapStep.step_number).all()
+    
+    return steps
+
+
+@router.delete("/goal/{goal_id}")
+async def delete_roadmap(
+    goal_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Delete all roadmap steps for a goal"""
+    # Verify goal belongs to user
+    goal = db.query(models.Goal).filter(
+        models.Goal.id == goal_id,
+        models.Goal.user_id == current_user.id
+    ).first()
+    if not goal:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    try:
+        # Delete all steps for this goal
+        steps = db.query(models.RoadmapStep).filter(models.RoadmapStep.goal_id == goal_id).all()
+        for step in steps:
+            db.delete(step)
+        db.commit()
+        return {"message": "Roadmap deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete roadmap: {str(e)}")
 
