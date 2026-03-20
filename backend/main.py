@@ -10,6 +10,7 @@ from app.middleware.error_handler import setup_exception_handlers
 from app.database import init_db
 from app.routers import (
     auth,
+    google_auth,
     subscriptions,
     users,
     analytics,
@@ -18,7 +19,6 @@ from app.routers import (
     quizzes,
     roadmaps,
     productivity,
-    flashcards,
     adaptive_learning,
     tutor,
     gamification,
@@ -56,6 +56,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
+app.include_router(google_auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["subscriptions"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
@@ -66,7 +67,6 @@ app.include_router(roadmaps.router, prefix="/api/roadmaps", tags=["roadmaps"])
 app.include_router(productivity.router, prefix="/api/productivity", tags=["productivity"])
 
 # New feature routers
-app.include_router(flashcards.router)  # Spaced Repetition
 app.include_router(adaptive_learning.router)  # Adaptive Learning
 app.include_router(tutor.router)  # AI Tutor
 app.include_router(gamification.router)  # Gamification

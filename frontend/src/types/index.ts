@@ -2,6 +2,16 @@
  * TypeScript type definitions
  */
 
+export interface User {
+  id: number
+  email: string
+  full_name?: string
+  provider?: 'local' | 'google'
+  avatar_url?: string
+  subscription_plan?: string
+  is_active?: boolean
+}
+
 export interface Goal {
   id: number
   title: string
@@ -77,10 +87,12 @@ export interface User {
   id: number
   email: string
   full_name?: string
-  is_active: boolean
-  subscription_plan: 'free' | 'pro'
+  provider?: 'local' | 'google'
+  avatar_url?: string
+  subscription_plan?: string | 'free' | 'pro'
+  is_active?: boolean
   subscription_expires_at?: string
-  created_at: string
+  created_at?: string
 }
 
 export interface SubscriptionStatus {

@@ -7,6 +7,7 @@ import { Goal, RoadmapStep } from '../types'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
+import LimitReachedModal from '../components/ui/LimitReachedModal'
 
 export default function StudyRoadmap() {
   const { goalId } = useParams<{ goalId?: string }>()
@@ -21,6 +22,7 @@ export default function StudyRoadmap() {
   const [newAchievements, setNewAchievements] = useState<any[]>([])
   const [levelUpInfo, setLevelUpInfo] = useState<{oldLevel: number, newLevel: number} | null>(null)
   const [showCelebration, setShowCelebration] = useState(false)
+  const [limitModalOpen, setLimitModalOpen] = useState(false)
 
   useEffect(() => {
     if (goalId) {
@@ -77,9 +79,13 @@ export default function StudyRoadmap() {
       setGenerating(true)
       const response = await roadmapsApi.generate(parseInt(goalId), 10)
       setSteps(response.data.steps)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to generate roadmap:', error)
-      alert('Failed to generate roadmap. Please try again.')
+      if (error.response?.status === 403) {
+        setLimitModalOpen(true)
+      } else {
+        alert('Failed to generate roadmap. Please try again.')
+      }
     } finally {
       setGenerating(false)
     }
@@ -500,6 +506,16 @@ export default function StudyRoadmap() {
           ))}
         </div>
       )}
+
+      {/* Limit Reached Modal */}
+      <LimitReachedModal
+        isOpen={limitModalOpen}
+        onClose={() => setLimitModalOpen(false)}
+        feature="roadmap generation"
+        limitType="daily"
+        currentCount={3}
+        limitCount={3}
+      />
     </div>
   )
 }

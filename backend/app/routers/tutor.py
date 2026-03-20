@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from app.database import get_db
 from app import models
-from app.routers.auth import get_current_user
+from app.dependencies import get_current_user, require_pro_subscription
 from app.services.conversation_service import AITutorService
 
 router = APIRouter(prefix="/api/tutor", tags=["ai-tutor"])
@@ -30,7 +30,7 @@ class CreateSessionRequest(BaseModel):
 async def create_session(
     request: CreateSessionRequest,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_pro_subscription)
 ):
     """Create a new AI tutoring session"""
     service = AITutorService(db)
@@ -58,7 +58,7 @@ async def create_session(
 async def get_sessions(
     active_only: bool = False,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_pro_subscription)
 ):
     """Get all tutoring sessions for the user"""
     service = AITutorService(db)
@@ -85,7 +85,7 @@ async def get_sessions(
 async def get_session(
     session_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_pro_subscription)
 ):
     """Get a specific session with all messages"""
     service = AITutorService(db)
@@ -124,7 +124,7 @@ async def send_message(
     session_id: int,
     request: SendMessageRequest,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_pro_subscription)
 ):
     """Send a message in a tutoring session and get AI response"""
     service = AITutorService(db)
@@ -181,7 +181,7 @@ async def explain_concept(
     context: str = None,
     difficulty_level: str = "intermediate",
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_pro_subscription)
 ):
     """Get a standalone explanation of a concept"""
     service = AITutorService(db)
@@ -211,7 +211,7 @@ async def rate_response(
     message_id: int,
     was_helpful: bool,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(require_pro_subscription)
 ):
     """Rate whether an AI response was helpful"""
     service = AITutorService(db)

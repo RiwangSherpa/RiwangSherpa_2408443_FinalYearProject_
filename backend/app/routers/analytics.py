@@ -13,7 +13,7 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from app.database import get_db
 from app import models, schemas
-from app.routers.auth import get_current_user
+from app.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -82,12 +82,19 @@ class QuizAnalytics(BaseModel):
 # Helper Functions
 # -------------------------------------------------
 
-def get_user_streak_data(db: Session, user_id: int) -> StreakData:
+def get_user_streak_data(db: Session, user_id: int, is_pro: bool = False) -> StreakData:
     """Calculate current and longest study streaks"""
-    # Get all study streaks for the user, ordered by date
-    streaks = db.query(models.StudyStreak).filter(
+    # Get study streaks for the user
+    query = db.query(models.StudyStreak).filter(
         models.StudyStreak.user_id == user_id
-    ).order_by(models.StudyStreak.date.desc()).all()
+    )
+    
+    # For free users, only get last 7 days of streak data
+    if not is_pro:
+        seven_days_ago = datetime.now() - timedelta(days=7)
+        query = query.filter(models.StudyStreak.date >= seven_days_ago)
+    
+    streaks = query.order_by(models.StudyStreak.date.desc()).all()
     
     if not streaks:
         return StreakData(current_streak=0, longest_streak=0)
@@ -343,8 +350,9 @@ async def get_overview_analytics(
     study_time_7_days = get_study_time_data(db, user_id, 7)
     study_time_30_days = get_study_time_data(db, user_id, 30)
     
-    # Get streak data
-    streak_data = get_user_streak_data(db, user_id)
+    # Get streak data (limited to 7 days for free users)
+    is_pro = current_user.subscription_plan == models.SubscriptionPlan.PRO
+    streak_data = get_user_streak_data(db, user_id, is_pro)
     
     # Get completed roadmap steps
     completed_steps = db.query(func.count(models.RoadmapStep.id)).join(models.Goal).filter(

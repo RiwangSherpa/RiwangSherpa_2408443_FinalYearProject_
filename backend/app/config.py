@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     RATE_LIMIT_AI_REQUESTS_PER_HOUR: int = 100  # Pro tier
     RATE_LIMIT_AI_REQUESTS_PER_HOUR_FREE: int = 10  # Free tier
     
+    # Google OAuth Configuration
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
+    FRONTEND_URL: str = "http://localhost:5173"
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

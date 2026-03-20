@@ -189,20 +189,6 @@ class AIExplanationResponse(BaseModel):
     confidence_score: float = Field(..., ge=0.0, le=1.0)
     prompt_used: Optional[str] = None
 
-# -------------------------------------------------
-# Flashcard Schemas
-# -------------------------------------------------
-
-class FlashcardCreate(BaseModel):
-    front_content: str = Field(..., min_length=1)
-    back_content: str = Field(..., min_length=1)
-    goal_id: Optional[int] = None
-    tags: Optional[List[str]] = None
-
-
-class ReviewRequest(BaseModel):
-    quality_score: int = Field(..., ge=0, le=5)
-
 
 # -------------------------------------------------
 # Analytics Schemas
@@ -244,6 +230,8 @@ class UserResponse(BaseModel):
     is_active: bool
     subscription_plan: str
     subscription_expires_at: Optional[datetime]
+    provider: str = "local"
+    avatar_url: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

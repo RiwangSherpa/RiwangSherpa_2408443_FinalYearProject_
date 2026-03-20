@@ -8,6 +8,7 @@ import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import VoiceInput from '../components/VoiceInput'
+import LimitReachedModal from '../components/ui/LimitReachedModal'
 
 export default function Goals() {
   const navigate = useNavigate()
@@ -19,6 +20,7 @@ export default function Goals() {
     title: '',
     description: '',
   })
+  const [limitModalOpen, setLimitModalOpen] = useState(false)
 
   useEffect(() => {
     loadGoals()
@@ -66,9 +68,14 @@ export default function Goals() {
       setNewGoal({ title: '', description: '' })
       setShowGoalForm(false)
       loadGoals()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create goal:', error)
-      alert('Failed to create goal. Please try again.')
+      if (error.response?.status === 403) {
+        setShowGoalForm(false)
+        setLimitModalOpen(true)
+      } else {
+        alert('Failed to create goal. Please try again.')
+      }
     }
   }
 
@@ -292,6 +299,16 @@ export default function Goals() {
           ))}
         </div>
       )}
+
+      {/* Limit Reached Modal */}
+      <LimitReachedModal
+        isOpen={limitModalOpen}
+        onClose={() => setLimitModalOpen(false)}
+        feature="goals"
+        limitType="active"
+        currentCount={3}
+        limitCount={3}
+      />
     </div>
   )
 }

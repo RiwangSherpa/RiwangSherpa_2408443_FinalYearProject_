@@ -25,7 +25,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Handle 401 errors (unauthorized)
+// Handle 401 errors (unauthorized) and 403 limit errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -33,6 +33,7 @@ api.interceptors.response.use(
       localStorage.removeItem('auth_token')
       window.location.href = '/login'
     }
+    // Pass 403 errors through so components can handle limit checks
     return Promise.reject(error)
   }
 )
@@ -152,6 +153,8 @@ export const authApi = {
     api.post('/api/auth/forgot-password', { email }),
   resetPassword: (token: string, newPassword: string) =>
     api.post('/api/auth/reset-password', { token, new_password: newPassword }),
+  checkGoogleAccount: (email: string) =>
+    api.post('/api/auth/check-google-account', { email }),
 }
 
 // Subscriptions API

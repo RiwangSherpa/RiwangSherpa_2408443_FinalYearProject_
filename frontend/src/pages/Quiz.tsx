@@ -7,6 +7,7 @@ import { Goal, QuizQuestion, QuizResult } from '../types'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
+import LimitReachedModal from '../components/ui/LimitReachedModal'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -41,6 +42,7 @@ export default function Quiz() {
   const [loadingQuizDetails, setLoadingQuizDetails] = useState(false)
   const [newAchievements, setNewAchievements] = useState<any[]>([])
   const [levelUpInfo, setLevelUpInfo] = useState<{oldLevel: number, newLevel: number} | null>(null)
+  const [limitModalOpen, setLimitModalOpen] = useState(false)
 
   useEffect(() => {
     if (goalId) {
@@ -100,9 +102,13 @@ export default function Quiz() {
       setQuestions(response.data.questions)
       setAnswers(new Array(response.data.questions.length).fill(-1))
       setResult(null)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to generate quiz:', error)
-      alert('Failed to generate quiz. Please try again.')
+      if (error.response?.status === 403) {
+        setLimitModalOpen(true)
+      } else {
+        alert('Failed to generate quiz. Please try again.')
+      }
     } finally {
       setGenerating(false)
     }
@@ -710,6 +716,16 @@ export default function Quiz() {
           </Card>
         </motion.div>
       )}
+
+      {/* Limit Reached Modal */}
+      <LimitReachedModal
+        isOpen={limitModalOpen}
+        onClose={() => setLimitModalOpen(false)}
+        feature="quiz generation"
+        limitType="daily"
+        currentCount={3}
+        limitCount={3}
+      />
     </div>
   )
 }

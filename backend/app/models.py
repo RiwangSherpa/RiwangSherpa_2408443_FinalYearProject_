@@ -119,12 +119,16 @@ class User(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password = Column(String(255), nullable=True)  # Nullable for Google OAuth users
     full_name = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
     subscription_plan = Column(SQLEnum(SubscriptionPlan), default=SubscriptionPlan.FREE)
     subscription_expires_at = Column(DateTime, nullable=True)
+    # OAuth fields
+    google_id = Column(String(255), unique=True, nullable=True, index=True)
+    provider = Column(String(20), default="local")  # "local" | "google"
+    avatar_url = Column(String(500), nullable=True)
     # UI preferences
     theme_preference = Column(String(20), nullable=True, default="light")
     created_at = Column(DateTime, server_default=func.now())
@@ -150,65 +154,18 @@ class PasswordResetToken(Base):
     user = relationship("User", back_populates="password_reset_tokens")
 
 
-# ============================================================================
-# SPACED REPETITION SYSTEM MODELS
-# ============================================================================
-
-class Flashcard(Base):
-    """Flashcards for spaced repetition learning"""
-    __tablename__ = "flashcards"
+class UserDailyUsage(Base):
+    """Track daily feature usage for free tier limits"""
+    __tablename__ = "user_daily_usage"
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    goal_id = Column(Integer, ForeignKey("goals.id"), nullable=True)
-    
-    # Content
-    front_content = Column(Text, nullable=False)  # Question/Prompt
-    back_content = Column(Text, nullable=False)   # Answer/Explanation
-    tags = Column(JSON, default=list)  # Topics/tags for categorization
-    
-    # SRS Algorithm Fields (SM-2)
-    ease_factor = Column(Float, default=2.5)  # EF in SM-2
-    interval_days = Column(Float, default=0.0)  # Current interval
-    repetition_count = Column(Integer, default=0)  # Number of successful reviews
-    
-    # Scheduling
-    next_review_date = Column(DateTime, nullable=True)
-    last_reviewed_at = Column(DateTime, nullable=True)
-    
-    # Statistics
-    total_reviews = Column(Integer, default=0)
-    correct_reviews = Column(Integer, default=0)
+    feature = Column(String(50), nullable=False)  # "quiz", "explanation", etc.
+    date = Column(DateTime, nullable=False)  # Date of usage
+    count = Column(Integer, default=0)  # Number of uses today
     
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-    
-    # Relationships
-    user = relationship("User")
-    goal = relationship("Goal")
-    review_history = relationship("FlashcardReview", back_populates="flashcard", cascade="all, delete-orphan")
-
-
-class FlashcardReview(Base):
-    """Individual review history for flashcards"""
-    __tablename__ = "flashcard_reviews"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    flashcard_id = Column(Integer, ForeignKey("flashcards.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
-    # Review data
-    quality_score = Column(Integer, nullable=False)  # 0-5 rating (SM-2)
-    reviewed_at = Column(DateTime, server_default=func.now())
-    
-    # Algorithm state at time of review
-    previous_interval = Column(Float, nullable=False)
-    new_interval = Column(Float, nullable=False)
-    previous_ease_factor = Column(Float, nullable=False)
-    new_ease_factor = Column(Float, nullable=False)
-    
-    # Relationships
-    flashcard = relationship("Flashcard", back_populates="review_history")
 
 
 # ============================================================================
@@ -397,9 +354,6 @@ class UserStats(Base):
     # Goal statistics
     goals_completed = Column(Integer, default=0)
     roadmap_steps_completed = Column(Integer, default=0)
-    
-    # Flashcard statistics
-    flashcards_mastered = Column(Integer, default=0)  # Cards with interval > 21 days
     
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     created_at = Column(DateTime, server_default=func.now())

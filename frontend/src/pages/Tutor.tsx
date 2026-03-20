@@ -17,6 +17,7 @@ import {
   X
 } from 'lucide-react'
 import { tutorApi, goalsApi } from '../lib/api'
+import LimitReachedModal from '../components/ui/LimitReachedModal'
 
 interface Session {
   id: number
@@ -54,6 +55,7 @@ export default function Tutor() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [newSessionTitle, setNewSessionTitle] = useState('')
   const [selectedGoalId, setSelectedGoalId] = useState<number | undefined>()
+  const [limitModalOpen, setLimitModalOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -110,8 +112,12 @@ export default function Tutor() {
       setShowNewSessionModal(false)
       setNewSessionTitle('')
       setSelectedGoalId(undefined)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create session:', error)
+      if (error.response?.status === 403) {
+        setShowNewSessionModal(false)
+        setLimitModalOpen(true)
+      }
     } finally {
       setIsCreating(false)
     }
@@ -525,6 +531,14 @@ export default function Tutor() {
           </motion.div>
         </div>
       )}
+
+      {/* Limit Reached Modal */}
+      <LimitReachedModal
+        isOpen={limitModalOpen}
+        onClose={() => setLimitModalOpen(false)}
+        feature="AI Tutor"
+        limitType="pro_required"
+      />
     </div>
   )
 }

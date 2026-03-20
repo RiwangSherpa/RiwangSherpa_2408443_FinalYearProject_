@@ -5,12 +5,13 @@ Quizzes API router
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import date
 
 from app.database import get_db
 from app import models, schemas
 from app.services.ai_service import ai_service
 from app.services.gamification import GamificationService
-from app.routers.auth import get_current_user
+from app.dependencies import get_current_user, track_usage
 
 router = APIRouter()
 
@@ -21,6 +22,23 @@ async def generate_quiz(
     current_user: models.User = Depends(get_current_user)
 ):
     """Generate quiz questions using AI"""
+    
+    # Check daily limit for free users (3 per day)
+    if current_user.subscription_plan != models.SubscriptionPlan.PRO:
+        today = date.today()
+        usage = db.query(models.UserDailyUsage).filter(
+            models.UserDailyUsage.user_id == current_user.id,
+            models.UserDailyUsage.feature == "quiz",
+            models.UserDailyUsage.date == today
+        ).first()
+        
+        current_count = usage.count if usage else 0
+        if current_count >= 3:
+            raise HTTPException(
+                status_code=403,
+                detail="Daily quiz generation limit reached (3/3). Upgrade to Pro for unlimited access."
+            )
+    
     goal = db.query(models.Goal).filter(
         models.Goal.id == request.goal_id,
         models.Goal.user_id == current_user.id
@@ -40,6 +58,10 @@ async def generate_quiz(
         questions = [
             schemas.QuizQuestion(**q) for q in ai_result["questions"]
         ]
+        
+        # Track usage for free users
+        if current_user.subscription_plan != models.SubscriptionPlan.PRO:
+            await track_usage(current_user.id, "quiz", db)
         
         return schemas.QuizGenerateResponse(
             success=True,

@@ -8,7 +8,7 @@ from typing import List
 
 from app.database import get_db
 from app import models, schemas
-from app.routers.auth import get_current_user
+from app.dependencies import get_current_user
 from app.services.gamification import GamificationService
 
 router = APIRouter()
@@ -20,6 +20,20 @@ async def create_goal(
     current_user: models.User = Depends(get_current_user)
 ):
     """Create a new learning goal"""
+    
+    # Check active goals limit for free users (max 3)
+    if current_user.subscription_plan != models.SubscriptionPlan.PRO:
+        active_goals_count = db.query(models.Goal).filter(
+            models.Goal.user_id == current_user.id,
+            models.Goal.is_completed == False
+        ).count()
+        
+        if active_goals_count >= 3:
+            raise HTTPException(
+                status_code=403,
+                detail="Free users can have maximum 3 active goals. Complete a goal or upgrade to Pro for unlimited goals."
+            )
+    
     try:
         db_goal = models.Goal(**goal.model_dump(), user_id=current_user.id)
         db.add(db_goal)

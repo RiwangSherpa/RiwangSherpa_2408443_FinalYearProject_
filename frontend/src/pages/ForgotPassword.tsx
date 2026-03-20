@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
+import { Mail, Loader2, AlertCircle, CheckCircle, BookOpen } from 'lucide-react'
+import { motion } from 'framer-motion'
+import Logo from '../components/Logo'
+import GoogleButton from '../components/auth/GoogleButton'
 import { authApi } from '../lib/api'
-import { BookOpen, Loader2, CheckCircle } from 'lucide-react'
 
 export default function ForgotPassword() {
   const { theme } = useTheme()
@@ -10,10 +13,52 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [isGoogleAccount, setIsGoogleAccount] = useState(false)
+  const [checkingAccount, setCheckingAccount] = useState(false)
+
+  const checkGoogleAccount = async (emailToCheck: string) => {
+    if (!emailToCheck || !emailToCheck.includes('@')) return
+    
+    setCheckingAccount(true)
+    try {
+      const response = await authApi.checkGoogleAccount(emailToCheck)
+      setIsGoogleAccount(response.data.is_google_account)
+    } catch (err) {
+      console.error('Failed to check account type:', err)
+    } finally {
+      setCheckingAccount(false)
+    }
+  }
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value
+    setEmail(newEmail)
+    setError('')
+    
+    // Debounce check for Google account
+    if (newEmail.includes('@') && newEmail.includes('.')) {
+      const timeoutId = setTimeout(() => {
+        checkGoogleAccount(newEmail)
+      }, 500)
+      return () => clearTimeout(timeoutId)
+    }
+  }
+
+  const handleGoogleLogin = () => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    window.location.href = `${apiUrl}/api/auth/google`
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    
+    // Check if Google account first
+    await checkGoogleAccount(email)
+    if (isGoogleAccount) {
+      return // Don't proceed with password reset for Google accounts
+    }
+    
     setLoading(true)
 
     try {
@@ -98,7 +143,7 @@ export default function ForgotPassword() {
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={handleEmailChange}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
                   theme === 'dark'
                     ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
@@ -108,20 +153,54 @@ export default function ForgotPassword() {
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                'Send Reset Link'
-              )}
-            </button>
+            {/* Google Account Warning */}
+            {isGoogleAccount && !checkingAccount && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-md bg-amber-50 dark:bg-amber-900/20 p-4"
+              >
+                <div className="flex">
+                  <AlertCircle className="h-5 w-5 text-amber-400 dark:text-amber-500" />
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                      Google Sign-In Account
+                    </h3>
+                    <div className="mt-2 text-sm text-amber-700 dark:text-amber-400">
+                      <p>
+                        This account uses Google Sign-In. You cannot reset the password here.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <GoogleButton 
+                    label="Continue with Google"
+                    onClick={handleGoogleLogin}
+                    isLoading={loading}
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {/* Only show reset button if not a Google account */}
+            {!isGoogleAccount && (
+              <button
+                type="submit"
+                disabled={loading || checkingAccount}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  'Send Reset Link'
+                )}
+              </button>
+            )}
           </form>
 
           <div className="mt-6 text-center">

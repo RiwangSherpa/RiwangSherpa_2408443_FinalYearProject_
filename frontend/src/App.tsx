@@ -8,6 +8,7 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
+import AuthCallback from './pages/AuthCallback'
 import Home from './pages/Home'
 import Goals from './pages/Goals'
 import StudyRoadmap from './pages/StudyRoadmap'
@@ -51,6 +52,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         
         {/* Default route - redirect to landing if not authenticated, dashboard if authenticated */}
         <Route path="/" element={<DefaultRoute />} />

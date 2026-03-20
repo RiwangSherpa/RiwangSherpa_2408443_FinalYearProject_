@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import { Mail, Lock, Eye, EyeOff, User, Loader2, Check } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Logo from '../components/Logo'
+import GoogleButton from '../components/auth/GoogleButton'
 
 export default function Signup() {
   const { theme } = useTheme()
@@ -231,6 +232,27 @@ export default function Signup() {
                 'Create Account'
               )}
             </button>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className={`w-full border-t ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'}`} />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className={`px-2 ${theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-500'}`}>
+                  or
+                </span>
+              </div>
+            </div>
+
+            {/* Google Sign Up */}
+            <GoogleButton 
+              label="Sign up with Google"
+              onClick={() => {
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+                window.location.href = `${apiUrl}/api/auth/google`
+              }} 
+            />
           </form>
 
           <div className="mt-6 text-center">
