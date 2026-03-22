@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { authApi } from '../lib/api'
 import { User } from '../types'
 import { useTimeTracker } from '../hooks/useTimeTracker'
@@ -11,6 +11,7 @@ interface AuthContextType {
   register: (email: string, password: string, fullName?: string) => Promise<void>
   logout: () => void
   refreshUser: () => Promise<void>
+  completeOAuthLogin: (accessToken: string) => Promise<void>
   isAuthenticated: boolean
 }
 
@@ -20,6 +21,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const loadUser = useCallback(async (authToken: string) => {
+    try {
+      const response = await authApi.getMe(authToken)
+      setUser(response.data)
+    } catch (error) {
+      console.error('Failed to load user:', error)
+      localStorage.removeItem('auth_token')
+      setToken(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   // Track time when user is authenticated
   useTimeTracker(!!user && !!token)
@@ -33,20 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setLoading(false)
     }
-  }, [])
-
-  const loadUser = async (authToken: string) => {
-    try {
-      const response = await authApi.getMe(authToken)
-      setUser(response.data)
-    } catch (error) {
-      console.error('Failed to load user:', error)
-      localStorage.removeItem('auth_token')
-      setToken(null)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [loadUser])
 
   const login = async (email: string, password: string) => {
     const response = await authApi.login(email, password)
@@ -72,6 +73,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const completeOAuthLogin = useCallback(async (accessToken: string) => {
+    localStorage.setItem('auth_token', accessToken)
+    setToken(accessToken)
+    await loadUser(accessToken)
+  }, [loadUser])
+
   return (
     <AuthContext.Provider
       value={{
@@ -82,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         refreshUser,
+        completeOAuthLogin,
         isAuthenticated: !!user && !!token,
       }}
     >

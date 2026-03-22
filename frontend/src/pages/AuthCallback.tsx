@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function AuthCallback() {
   const navigate = useNavigate()
+  const { completeOAuthLogin } = useAuth()
   const [searchParams] = useSearchParams()
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -12,8 +14,6 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       const token = searchParams.get('token')
-      
-      console.log('DEBUG: Token from URL:', token)
 
       if (!token) {
         setError('Authentication failed. No token received.')
@@ -22,22 +22,8 @@ export default function AuthCallback() {
       }
 
       try {
-        // Save token to localStorage
-        localStorage.setItem('auth_token', token)
-        console.log('DEBUG: Token saved to localStorage')
-
-        // Create minimal user data for now
-        const minimalUser = {
-          id: 1,
-          email: 'google@example.com',
-          provider: 'google',
-          is_active: true
-        }
-        localStorage.setItem('user', JSON.stringify(minimalUser))
-        console.log('DEBUG: Minimal user saved')
-
-        // Redirect to dashboard immediately
-        console.log('DEBUG: Redirecting to dashboard...')
+        // Update AuthContext with token and load user - then redirect
+        await completeOAuthLogin(token)
         navigate('/dashboard', { replace: true })
       } catch (err) {
         console.error('Failed to complete authentication:', err)
@@ -47,7 +33,7 @@ export default function AuthCallback() {
     }
 
     handleAuthCallback()
-  }, [navigate, searchParams])
+  }, [navigate, searchParams, completeOAuthLogin])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
