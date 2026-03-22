@@ -48,6 +48,58 @@ def _run_user_oauth_migration():
             conn.commit()
 
 
+def _run_hashed_password_nullable_migration():
+    """
+    Make hashed_password nullable to support Google OAuth users who have no password.
+    SQLite doesn't support ALTER COLUMN, so we recreate the table.
+    """
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+    # Check if hashed_password is already nullable (notnull=0)
+    cols_info = {c["name"]: c for c in inspector.get_columns("users")}
+    if "hashed_password" not in cols_info:
+        return
+    if cols_info["hashed_password"].get("nullable", True):
+        return  # Already nullable
+    # Recreate users table with hashed_password nullable
+    with engine.connect() as conn:
+        conn.execute(text("PRAGMA foreign_keys=OFF"))
+        conn.execute(text("""
+            CREATE TABLE users_new (
+                id INTEGER NOT NULL PRIMARY KEY,
+                email VARCHAR(255) NOT NULL,
+                hashed_password VARCHAR(255),
+                full_name VARCHAR(255),
+                is_active BOOLEAN DEFAULT 1,
+                is_verified BOOLEAN DEFAULT 0,
+                subscription_plan VARCHAR(10) DEFAULT 'free',
+                subscription_expires_at DATETIME,
+                google_id VARCHAR(255),
+                provider VARCHAR(20) DEFAULT 'local',
+                avatar_url VARCHAR(500),
+                theme_preference VARCHAR(20) DEFAULT 'light',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        conn.execute(text("""
+            INSERT INTO users_new (id, email, hashed_password, full_name, is_active,
+                is_verified, subscription_plan, subscription_expires_at, google_id, provider,
+                avatar_url, theme_preference, created_at, updated_at)
+            SELECT id, email, hashed_password, full_name, is_active, is_verified,
+                subscription_plan, subscription_expires_at, google_id, provider,
+                avatar_url, theme_preference, created_at, updated_at FROM users
+        """))
+        conn.execute(text("DROP TABLE users"))
+        conn.execute(text("ALTER TABLE users_new RENAME TO users"))
+        conn.execute(text("PRAGMA foreign_keys=ON"))
+        # Recreate indexes
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users(email)"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_id ON users(google_id)"))
+        conn.commit()
+
+
 def get_db():
     """Dependency for getting database session"""
     db = SessionLocal()
@@ -72,4 +124,5 @@ def init_db():
     )
     Base.metadata.create_all(bind=engine)
     _run_user_oauth_migration()
+    _run_hashed_password_nullable_migration()
 

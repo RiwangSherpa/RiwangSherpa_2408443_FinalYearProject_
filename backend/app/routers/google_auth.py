@@ -3,14 +3,18 @@ Google OAuth Authentication Router
 Compatible with FastAPI >= 0.110 and Pydantic v2
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from pydantic import BaseModel
 import httpx
 import os
 
 from app.database import get_db
+
+logger = logging.getLogger(__name__)
 from app import models
 from app.services.auth_service import create_access_token, get_user_by_email
 from app.config import settings
@@ -130,36 +134,41 @@ async def google_callback(
             detail="Invalid user data from Google"
         )
     
-    # Check if user exists
-    user = db.query(models.User).filter(models.User.google_id == google_id).first()
-    
-    if not user:
-        # Check if user with same email exists (local account)
-        existing_user = get_user_by_email(db, email)
-        
-        if existing_user:
-            # Merge accounts: add google_id to existing user
-            existing_user.google_id = google_id
-            existing_user.provider = "google"
-            if avatar_url and not existing_user.avatar_url:
-                existing_user.avatar_url = avatar_url
-            db.commit()
-            user = existing_user
-        else:
-            # Create new user
-            user = models.User(
-                email=email,
-                full_name=full_name,
-                google_id=google_id,
-                provider="google",
-                avatar_url=avatar_url,
-                is_active=True,
-                is_verified=True,  # Google accounts are pre-verified
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-    
+    # Check if user exists and create/update as needed
+    try:
+        user = db.query(models.User).filter(models.User.google_id == google_id).first()
+
+        if not user:
+            # Check if user with same email exists (local account)
+            existing_user = get_user_by_email(db, email)
+
+            if existing_user:
+                # Merge accounts: add google_id to existing user
+                existing_user.google_id = google_id
+                existing_user.provider = "google"
+                if avatar_url and not existing_user.avatar_url:
+                    existing_user.avatar_url = avatar_url
+                db.commit()
+                user = existing_user
+            else:
+                # Create new user
+                user = models.User(
+                    email=email,
+                    full_name=full_name,
+                    google_id=google_id,
+                    provider="google",
+                    avatar_url=avatar_url,
+                    is_active=True,
+                    is_verified=True,  # Google accounts are pre-verified
+                    subscription_plan=models.SubscriptionPlan.FREE,
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+    except SQLAlchemyError as e:
+        logger.exception("Database error during Google login: %s", str(e))
+        raise
+
     # Generate JWT token
     access_token = create_access_token(data={"sub": user.email})
     
