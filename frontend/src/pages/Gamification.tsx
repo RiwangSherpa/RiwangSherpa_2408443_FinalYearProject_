@@ -42,6 +42,7 @@ export default function Gamification() {
   const [levelProgress, setLevelProgress] = useState<LevelProgress | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'achievements'>('overview')
   const [isLoading, setIsLoading] = useState(true)
+  const [isCheckingAchievements, setIsCheckingAchievements] = useState(false)
   const [newlyEarned, setNewlyEarned] = useState<Achievement[]>([])
 
   const [levelUpInfo, setLevelUpInfo] = useState<{oldLevel: number, newLevel: number} | null>(null)
@@ -60,6 +61,11 @@ export default function Gamification() {
       setNewlyEarned(profileRes.data.newly_earned || [])
       setAchievements(profileRes.data.achievements)
       setLevelProgress(profileRes.data.level_progress)
+      
+      // If there are newly earned achievements, show celebration
+      if (profileRes.data.newly_earned?.length > 0) {
+        setNewlyEarned(profileRes.data.newly_earned)
+      }
     } catch (error) {
       console.error('Failed to load gamification data:', error)
     } finally {
@@ -68,7 +74,10 @@ export default function Gamification() {
   }
 
   const checkNewAchievements = async () => {
+    if (isCheckingAchievements) return // Prevent multiple clicks
+    
     try {
+      setIsCheckingAchievements(true)
       const response = await gamificationApi.checkAchievements()
       if (response.data.new_achievements?.length > 0) {
         setNewlyEarned(response.data.new_achievements)
@@ -84,9 +93,21 @@ export default function Gamification() {
           setLevelProgress(response.data.current_level_progress)
         }
         loadData()
+      } else {
+        // Switch to achievements tab and scroll to locked section
+        setActiveTab('achievements')
+        setTimeout(() => {
+          const lockedSection = document.getElementById('locked-achievements')
+          if (lockedSection) {
+            lockedSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        }, 200)
       }
     } catch (error) {
       console.error('Failed to check achievements:', error)
+      alert('Failed to check achievements. Please try again.')
+    } finally {
+      setIsCheckingAchievements(false)
     }
   }
 
@@ -108,15 +129,15 @@ export default function Gamification() {
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'bronze':
-        return 'from-amber-600 to-orange-600'
+        return 'bg-tertiary'
       case 'silver':
-        return 'from-gray-400 to-gray-500'
+        return 'bg-neutral-400'
       case 'gold':
-        return 'from-yellow-400 to-orange-500'
+        return 'bg-tertiary'
       case 'platinum':
-        return 'from-purple-500 to-pink-500'
+        return 'bg-secondary'
       default:
-        return 'from-gray-500 to-gray-600'
+        return 'bg-neutral-500'
     }
   }
 
@@ -139,14 +160,14 @@ export default function Gamification() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-dark-bg-primary transition-colors duration-300">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary dark:border-primary-dark"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-purple-950/20 p-4 sm:p-6 lg:p-8">
+    <div className="bg-neutral-50 dark:bg-dark-bg-primary min-h-screen px-6 py-8 transition-colors duration-300">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <motion.div 
@@ -155,14 +176,14 @@ export default function Gamification() {
           className="mb-8"
         >
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl shadow-lg shadow-orange-500/25">
+            <div className="p-3 bg-tertiary dark:bg-tertiary rounded-2xl transition-colors">
               <Trophy className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-500 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold text-primary dark:text-primary-dark font-heading transition-colors">
                 Achievements
               </h1>
-              <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">
+              <p className="text-neutral-500 dark:text-dark-text-secondary text-sm mt-0.5 transition-colors">
                 Track progress, earn badges, and level up
               </p>
             </div>
@@ -173,21 +194,21 @@ export default function Gamification() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl p-8 text-white mb-8 shadow-xl shadow-indigo-500/20"
+          className="bg-primary dark:bg-primary-dark rounded-card p-8 text-white mb-8 transition-colors"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <div className="w-24 h-24 bg-white/20 backdrop-blur rounded-3xl flex items-center justify-center shadow-lg">
-                <Crown className="w-12 h-12" />
+              <div className="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center">
+                <Crown className="w-10 h-10" />
               </div>
               <div>
                 <p className="text-white/70 text-sm font-medium mb-1">Current Level</p>
-                <p className="text-5xl font-bold">{levelProgress?.current_level || 1}</p>
+                <p className="text-4xl font-bold font-heading">{levelProgress?.current_level || 1}</p>
               </div>
             </div>
             <div className="text-right">
               <p className="text-white/70 text-sm font-medium mb-1">Total XP</p>
-              <p className="text-4xl font-bold">{levelProgress?.total_xp.toLocaleString() || 0}</p>
+              <p className="text-3xl font-bold font-heading">{levelProgress?.total_xp.toLocaleString() || 0}</p>
             </div>
           </div>
           
@@ -197,12 +218,12 @@ export default function Gamification() {
               <span>{levelProgress?.xp_in_level || 0} / {levelProgress?.xp_needed_for_level || 100} XP</span>
               <span>Level {(levelProgress?.current_level || 1) + 1}</span>
             </div>
-            <div className="w-full bg-white/20 rounded-full h-4 backdrop-blur">
+            <div className="w-full bg-white/20 rounded-full h-3">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${levelProgress?.progress_percentage || 0}%` }}
                 transition={{ duration: 1, ease: "easeOut" }}
-                className="bg-white rounded-full h-4 shadow-lg"
+                className="bg-white rounded-full h-3"
               />
             </div>
           </div>
@@ -213,24 +234,24 @@ export default function Gamification() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 rounded-3xl p-6 mb-8 shadow-xl shadow-orange-500/20"
+            className="bg-secondary dark:bg-secondary-dark rounded-card p-6 mb-8 transition-colors"
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-white/20 rounded-xl">
+              <div className="p-2 bg-white/10 rounded-xl">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-white">New Achievement{newlyEarned.length > 1 ? 's' : ''} Unlocked!</h3>
+              <h3 className="text-xl font-bold text-white font-heading">New Achievement{newlyEarned.length > 1 ? 's' : ''} Unlocked!</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {newlyEarned.map((achievement) => (
-                <div key={achievement.id || (achievement as any).achievement_id} className="bg-white/95 dark:bg-gray-800/95 backdrop-blur rounded-2xl p-4 shadow-lg">
+                <div key={achievement.id || (achievement as any).achievement_id} className="bg-white dark:bg-dark-bg-secondary rounded-card p-4 border border-neutral-200 dark:border-dark-border-primary transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${getDifficultyColor(achievement.difficulty)} flex items-center justify-center`}>
+                    <div className={`w-12 h-12 rounded-xl ${getDifficultyColor(achievement.difficulty)} flex items-center justify-center transition-colors`}>
                       {getDifficultyIcon(achievement.difficulty)}
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">{achievement.name}</p>
-                      <p className="text-xs text-emerald-600 font-medium">+{achievement.xp_reward} XP</p>
+                      <p className="font-semibold text-neutral-900 dark:text-dark-text-primary transition-colors">{achievement.name}</p>
+                      <p className="text-xs text-primary dark:text-primary-dark font-medium transition-colors">+{achievement.xp_reward} XP</p>
                     </div>
                   </div>
                 </div>
@@ -244,26 +265,26 @@ export default function Gamification() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl p-6 mb-8 shadow-xl shadow-indigo-500/20"
+            className="bg-primary dark:bg-primary-dark rounded-card p-6 mb-8 transition-colors"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
+                <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center">
                   <Crown className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">Level Up!</h3>
-                  <p className="text-white/80">You reached level {levelUpInfo.newLevel}</p>
+                  <h3 className="text-xl font-bold text-white font-heading">Level Up!</h3>
+                  <p className="text-white/60">You reached level {levelUpInfo.newLevel}</p>
                 </div>
               </div>
               <div className="text-center">
                 <p className="text-sm text-white/60 mb-1">Level</p>
-                <p className="text-4xl font-bold text-white">{levelUpInfo.newLevel}</p>
+                <p className="text-4xl font-bold text-white font-heading">{levelUpInfo.newLevel}</p>
               </div>
             </div>
             <button
               onClick={() => setLevelUpInfo(null)}
-              className="mt-4 w-full py-2 bg-white/20 hover:bg-white/30 rounded-xl text-white font-medium transition-colors"
+              className="mt-4 w-full py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white font-medium transition-colors"
             >
               Awesome!
             </button>
@@ -272,15 +293,15 @@ export default function Gamification() {
 
         {/* Tabs */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex bg-white dark:bg-gray-800/80 backdrop-blur rounded-2xl p-1.5 shadow-sm border border-gray-100 dark:border-gray-700/50">
+          <div className="flex bg-white dark:bg-dark-bg-secondary rounded-card p-1.5 border border-neutral-200 dark:border-dark-border-primary transition-colors duration-300">
             {(['overview', 'achievements'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
+                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-colors ${
                   activeTab === tab
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                    ? 'bg-primary dark:bg-primary-dark text-white'
+                    : 'text-neutral-600 dark:text-dark-text-secondary hover:bg-neutral-50 dark:hover:bg-dark-bg-tertiary'
                 }`}
               >
                 {tab === 'overview' && 'Overview'}
@@ -290,10 +311,20 @@ export default function Gamification() {
           </div>
           <button
             onClick={checkNewAchievements}
-            className="sm:ml-auto px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-2xl font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-xl transition-all flex items-center justify-center gap-2"
+            disabled={isCheckingAchievements}
+            className="sm:ml-auto px-6 py-3 bg-primary dark:bg-primary-dark hover:bg-primary-light dark:hover:bg-primary/90 text-white rounded-card font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Sparkles className="w-5 h-5" />
-            Check for New
+            {isCheckingAchievements ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Checking...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5" />
+                Check for New
+              </>
+            )}
           </button>
         </div>
 
@@ -301,17 +332,17 @@ export default function Gamification() {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Recent Achievements */}
-            <div className="bg-white dark:bg-gray-800/80 backdrop-blur rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700/50">
+            <div className="bg-white dark:bg-dark-bg-secondary rounded-card p-6 border border-neutral-200 dark:border-dark-border-primary transition-colors duration-300">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl">
+                  <div className="p-2 bg-tertiary dark:bg-tertiary rounded-xl transition-colors">
                     <Star className="w-5 h-5 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Recent Achievements</h3>
+                  <h3 className="text-xl font-bold text-neutral-900 dark:text-dark-text-primary font-heading transition-colors">Recent Achievements</h3>
                 </div>
                 <button
                   onClick={() => setActiveTab('achievements')}
-                  className="text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 hover:gap-2 transition-all"
+                  className="text-sm text-primary dark:text-primary-dark hover:text-primary-light dark:hover:text-primary-dark font-medium flex items-center gap-1 transition-colors"
                 >
                   View All <ChevronRight className="w-4 h-4" />
                 </button>
@@ -323,11 +354,10 @@ export default function Gamification() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.05 }}
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    className={`bg-gradient-to-r ${getDifficultyColor(achievement.difficulty)} rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all`}
+                    className={`${getDifficultyColor(achievement.difficulty)} rounded-card p-5 text-white`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                         {getCategoryIcon(achievement.category)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -339,10 +369,10 @@ export default function Gamification() {
                 ))}
                 {achievements.earned.length === 0 && (
                   <div className="col-span-3 text-center py-12">
-                    <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <Trophy className="w-8 h-8 text-indigo-400" />
+                    <div className="w-16 h-16 bg-primary-muted dark:bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-colors">
+                      <Trophy className="w-8 h-8 text-primary dark:text-primary-dark transition-colors" />
                     </div>
-                    <p className="text-gray-500 dark:text-gray-400">No achievements yet. Start learning to earn your first badge!</p>
+                    <p className="text-neutral-500 dark:text-dark-text-secondary transition-colors">No achievements yet. Start learning to earn your first badge!</p>
                   </div>
                 )}
               </div>
@@ -356,10 +386,10 @@ export default function Gamification() {
             {/* Earned Achievements */}
             <div>
               <div className="flex items-center gap-3 mb-5">
-                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl">
-                  <Unlock className="w-5 h-5 text-emerald-600" />
+                <div className="p-2 bg-primary-muted dark:bg-primary/20 rounded-xl transition-colors">
+                  <Unlock className="w-5 h-5 text-primary dark:text-primary-dark transition-colors" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Earned ({achievements.earned.length})</h3>
+                <h3 className="text-xl font-bold text-neutral-900 dark:text-dark-text-primary font-heading transition-colors">Earned ({achievements.earned.length})</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {achievements.earned.map((achievement, idx) => (
@@ -368,11 +398,10 @@ export default function Gamification() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.03 }}
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    className={`bg-gradient-to-r ${getDifficultyColor(achievement.difficulty)} rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all`}
+                    className={`${getDifficultyColor(achievement.difficulty)} rounded-card p-5 text-white`}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center shrink-0">
+                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
                         {getCategoryIcon(achievement.category)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -394,34 +423,34 @@ export default function Gamification() {
 
             {/* Locked Achievements */}
             {achievements.locked.length > 0 && (
-              <div>
+              <div id="locked-achievements">
                 <div className="flex items-center gap-3 mb-5">
-                  <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-xl">
-                    <Lock className="w-5 h-5 text-gray-400" />
+                  <div className="p-2 bg-neutral-100 dark:bg-dark-bg-tertiary rounded-xl transition-colors">
+                    <Lock className="w-5 h-5 text-neutral-400 dark:text-dark-text-tertiary transition-colors" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Locked ({achievements.locked.length})</h3>
+                  <h3 className="text-xl font-bold text-neutral-900 dark:text-dark-text-primary font-heading transition-colors">Locked ({achievements.locked.length})</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {achievements.locked.map((achievement) => (
                     <div
                       key={achievement.id}
-                      className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-5 border border-gray-100 dark:border-gray-700/50"
+                      className="bg-neutral-50 dark:bg-dark-bg-secondary rounded-card p-5 border border-neutral-200 dark:border-dark-border-primary transition-colors"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-xl flex items-center justify-center">
-                          {achievement.hidden ? <Lock className="w-5 h-5 text-gray-400" /> : getCategoryIcon(achievement.category)}
+                        <div className="w-12 h-12 bg-neutral-200 dark:bg-dark-bg-tertiary rounded-xl flex items-center justify-center">
+                          {achievement.hidden ? <Lock className="w-5 h-5 text-neutral-400 dark:text-dark-text-tertiary transition-colors" /> : getCategoryIcon(achievement.category)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-700 dark:text-gray-300">
+                          <p className="font-semibold text-neutral-700 dark:text-dark-text-primary transition-colors">
                             {achievement.hidden ? '???' : achievement.name}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-neutral-500 dark:text-dark-text-secondary mt-1 transition-colors">
                             {achievement.hidden ? 'Hidden achievement' : achievement.description}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-gray-400">+{achievement.xp_reward}</p>
-                          <p className="text-xs text-gray-400">XP</p>
+                          <p className="text-sm font-bold text-neutral-400 dark:text-dark-text-tertiary transition-colors">+{achievement.xp_reward}</p>
+                          <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary transition-colors">XP</p>
                         </div>
                       </div>
                     </div>

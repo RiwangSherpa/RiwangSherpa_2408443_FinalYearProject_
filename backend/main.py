@@ -39,7 +39,8 @@ setup_exception_handlers(app)
 app.add_middleware(SecurityHeadersMiddleware)
 
 # Rate limiting middleware (must be after security, before CORS)
-app.add_middleware(RateLimitMiddleware)
+# DISABLED FOR DEVELOPMENT - Re-enable for production
+# app.add_middleware(RateLimitMiddleware)
 
 # Initialize database
 init_db()

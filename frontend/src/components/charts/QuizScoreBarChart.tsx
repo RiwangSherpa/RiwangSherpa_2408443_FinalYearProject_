@@ -1,5 +1,4 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { useTheme } from '../../contexts/ThemeContext'
 
 interface TopicPerformance {
   topic: string
@@ -12,9 +11,6 @@ interface QuizScoreBarChartProps {
 }
 
 export default function QuizScoreBarChart({ data }: QuizScoreBarChartProps) {
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
-
   // Format data for chart (limit to top 10 topics)
   const chartData = data
     .slice(0, 10)
@@ -26,9 +22,9 @@ export default function QuizScoreBarChart({ data }: QuizScoreBarChartProps) {
     }))
     .sort((a, b) => b.score - a.score)
 
-  const textColor = isDark ? '#e5e7eb' : '#374151'
-  const gridColor = isDark ? '#374151' : '#e5e7eb'
-  const barColor = '#8b5cf6'
+  const textColor = '#6B7280'
+  const gridColor = '#E5E7EB'
+  const barColor = '#064E3B'
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -36,35 +32,38 @@ export default function QuizScoreBarChart({ data }: QuizScoreBarChartProps) {
         <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
         <XAxis
           dataKey="topic"
-          stroke={textColor}
-          style={{ fontSize: '11px' }}
-          tick={{ fill: textColor }}
+          tick={{ fill: textColor, fontSize: 11, fontFamily: 'Inter' }}
+          axisLine={false}
+          tickLine={false}
           angle={-45}
           textAnchor="end"
           height={80}
         />
         <YAxis
           domain={[0, 100]}
-          stroke={textColor}
-          style={{ fontSize: '12px' }}
-          tick={{ fill: textColor }}
+          tick={{ fill: textColor, fontSize: 12, fontFamily: 'Inter' }}
+          axisLine={false}
+          tickLine={false}
           label={{
             value: 'Score (%)',
             angle: -90,
             position: 'insideLeft',
-            style: { textAnchor: 'middle', fill: textColor },
+            style: { textAnchor: 'middle', fill: textColor, fontFamily: 'Inter', fontSize: 12 },
           }}
         />
         <Tooltip
           contentStyle={{
-            backgroundColor: isDark ? '#1f2937' : '#ffffff',
-            border: `1px solid ${gridColor}`,
+            background: '#FFFFFF',
+            border: '1px solid #E5E7EB',
             borderRadius: '8px',
+            fontFamily: 'Inter',
+            fontSize: '12px',
           }}
-          labelStyle={{ color: textColor }}
-          formatter={(value: number, payload: any) => [
-            `${value}% (${payload?.[0]?.payload?.quizCount} quizzes)`,
-            payload?.[0]?.payload?.fullTopic || 'Score',
+          labelStyle={{ color: '#111827', fontWeight: 600 }}
+          itemStyle={{ color: '#064E3B' }}
+          formatter={(value: any, _name: any, props: any) => [
+            `${value ?? 0}% (${props?.payload?.quizCount} quizzes)`,
+            props?.payload?.fullTopic || 'Score',
           ]}
         />
         <Bar dataKey="score" fill={barColor} radius={[4, 4, 0, 0]} />

@@ -171,6 +171,7 @@ export const analyticsApi = {
   getCurrentGoal: () => api.get('/api/analytics/goals/current'),
   getCurrentRoadmap: () => api.get('/api/analytics/roadmap/current'),
   getQuizAnalytics: () => api.get('/api/analytics/quizzes'),
+  getActivity: (limit: number = 10) => api.get('/api/analytics/activity', { params: { limit } }),
 }
 
 // Users API (Settings)

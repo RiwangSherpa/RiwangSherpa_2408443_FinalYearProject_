@@ -133,19 +133,20 @@ export default function Subscription() {
   const isPro = status?.plan === 'pro' && status?.is_active
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Subscription</h1>
-        <p className="text-lg text-gray-600">Manage your subscription plan</p>
+    <div className="bg-neutral-50 dark:bg-dark-bg-primary min-h-screen px-6 py-8 transition-colors duration-300">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-dark-text-primary mb-2 transition-colors">Subscription</h1>
+          <p className="text-lg text-gray-600 dark:text-dark-text-secondary transition-colors">Manage your subscription plan</p>
       </div>
 
       {/* Current Status */}
-      <div className="card mb-8">
+      <div className="card mb-8 bg-white dark:bg-dark-bg-secondary border border-neutral-200 dark:border-dark-border-primary transition-colors duration-300">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Current Plan</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-dark-text-primary mb-2 transition-colors">Current Plan</h2>
             <div className="flex items-center gap-3">
-              <span className={`text-3xl font-bold ${isPro ? 'text-primary-600' : 'text-gray-700'}`}>
+              <span className={`text-3xl font-bold ${isPro ? 'text-primary-600 dark:text-primary-dark' : 'text-gray-700 dark:text-dark-text-secondary'} transition-colors`}>
                 {status?.plan === 'pro' ? 'Pro' : 'Free'}
               </span>
               {isPro && (
@@ -210,15 +211,15 @@ export default function Subscription() {
               </li>
               <li className="flex items-center gap-2">
                 <X className="w-5 h-5 text-gray-400" />
-                <span className="text-gray-500">AI Explanations</span>
+                <span className="text-gray-500 dark:text-dark-text-tertiary transition-colors">AI Explanations</span>
               </li>
               <li className="flex items-center gap-2">
                 <X className="w-5 h-5 text-gray-400" />
-                <span className="text-gray-500">Advanced Analytics</span>
+                <span className="text-gray-500 dark:text-dark-text-tertiary transition-colors">Advanced Analytics</span>
               </li>
               <li className="flex items-center gap-2">
                 <X className="w-5 h-5 text-gray-400" />
-                <span className="text-gray-500">Export Features</span>
+                <span className="text-gray-500 dark:text-dark-text-tertiary transition-colors">Export Features</span>
               </li>
             </ul>
 
@@ -457,6 +458,7 @@ export default function Subscription() {
         )}
       </AnimatePresence>
     </div>
+  </div>
   )
 }
 

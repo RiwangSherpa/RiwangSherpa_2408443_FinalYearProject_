@@ -165,6 +165,23 @@ async def google_callback(
                 db.add(user)
                 db.commit()
                 db.refresh(user)
+                
+                # Initialize user stats for new user
+                user_stats = models.UserStats(
+                    user_id=user.id,
+                    total_xp=0,
+                    current_level=1,
+                    total_study_sessions=0,
+                    total_study_hours=0.0,
+                    total_quizzes_taken=0,
+                    total_questions_answered=0,
+                    perfect_quiz_count=0,
+                    longest_streak=0,
+                    goals_completed=0,
+                    roadmap_steps_completed=0
+                )
+                db.add(user_stats)
+                db.commit()
     except SQLAlchemyError as e:
         logger.exception("Database error during Google login: %s", str(e))
         raise

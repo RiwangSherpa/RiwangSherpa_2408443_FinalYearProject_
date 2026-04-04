@@ -4,6 +4,7 @@ import { CheckCircle2, Circle, Sparkles, Loader2, ArrowLeft, BookOpen, ChevronRi
 import { motion } from 'framer-motion'
 import { goalsApi, roadmapsApi } from '../lib/api'
 import { Goal, RoadmapStep } from '../types'
+import { useData } from '../contexts/DataContext'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
@@ -12,6 +13,7 @@ import LimitReachedModal from '../components/ui/LimitReachedModal'
 export default function StudyRoadmap() {
   const { goalId } = useParams<{ goalId?: string }>()
   const navigate = useNavigate()
+  const { refreshActivities } = useData()
   const [goal, setGoal] = useState<Goal | null>(null)
   const [steps, setSteps] = useState<RoadmapStep[]>([])
   const [loading, setLoading] = useState(true)
@@ -92,12 +94,35 @@ export default function StudyRoadmap() {
   }
 
   const handleToggleStep = async (stepId: number, isCompleted: boolean) => {
+    // Optimistic UI update - immediately update the UI
+    const updatedSteps = steps.map(step => 
+      step.id === stepId ? { ...step, is_completed: !isCompleted } : step
+    )
+    setSteps(updatedSteps)
+    
+    // Prevent multiple clicks
+    const button = document.querySelector(`[data-step-id="${stepId}"]`) as HTMLButtonElement
+    if (button) {
+      button.disabled = true
+    }
+    
     try {
+      let response
       if (isCompleted) {
         await roadmapsApi.uncompleteStep(stepId)
       } else {
-        const response = await roadmapsApi.completeStep(stepId)
-        // Check for achievements and level up
+        response = await roadmapsApi.completeStep(stepId)
+        
+        // Check for achievements and level up from step completion
+        if (response.data.new_achievements?.length > 0) {
+          setShowCelebration(true)
+          setNewAchievements(response.data.new_achievements)
+        }
+        if (response.data.level_up) {
+          setLevelUpInfo(response.data.level_up)
+        }
+        
+        // Check for achievements and level up from goal completion
         if (response.data.goal_completed) {
           setShowCelebration(true)
           if (response.data.new_achievements?.length > 0) {
@@ -111,16 +136,32 @@ export default function StudyRoadmap() {
             setShowCelebration(false)
           }, 5000)
         }
+        
+        // Refresh activities to show recent actions
+        refreshActivities()
       }
-      // Reload roadmap to get updated goal status
-      await loadRoadmap()
-      // Reload goal to get updated completion status
-      if (goalId) {
-        const goalRes = await goalsApi.getById(parseInt(goalId))
-        setGoal(goalRes.data)
+      
+      // Update goal status locally if needed
+      if (goal && response?.data.goal_completed) {
+        setGoal({ ...goal, is_completed: true })
       }
-    } catch (error) {
+      
+    } catch (error: any) {
       console.error('Failed to update step:', error)
+      // Rollback on error
+      setSteps(steps)
+      
+      // Handle 429 rate limit gracefully
+      if (error.response?.status === 429) {
+        alert('Please wait a moment before trying again.')
+      } else {
+        alert('Failed to update step. Please try again.')
+      }
+    } finally {
+      // Re-enable button
+      if (button) {
+        button.disabled = false
+      }
     }
   }
 
@@ -153,7 +194,7 @@ export default function StudyRoadmap() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -164,124 +205,125 @@ export default function StudyRoadmap() {
     const goalIds = Object.keys(groupedRoadmaps).map(Number)
 
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Roadmaps</h1>
-          <p className="text-gray-600">View all your study roadmaps across different goals</p>
-        </div>
-
-        {/* Create New Roadmap Section */}
-        <Card className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-1">Create a New Roadmap</h2>
-              <p className="text-gray-600">Select a goal to generate a personalized study roadmap</p>
-            </div>
-            <Button onClick={() => navigate('/goals')}>
-              Browse Goals
-            </Button>
+      <div className="bg-neutral-50 dark:bg-dark-bg-primary min-h-screen px-6 py-8 transition-colors duration-300">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h1 className="font-heading text-2xl font-bold text-primary dark:text-primary-dark mb-2 transition-colors">My Roadmaps</h1>
+            <p className="text-sm text-neutral-500 dark:text-dark-text-secondary transition-colors">View all your study roadmaps across different goals</p>
           </div>
-        </Card>
 
-        {/* All Roadmaps List */}
-        <div className="space-y-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Roadmaps</h2>
-          
-          {loadingAllRoadmaps ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            </div>
-          ) : goalIds.length === 0 ? (
-            <Card>
-              <div className="text-center py-12">
-                <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Roadmaps Yet</h3>
-                <p className="text-gray-600 mb-4">You haven't generated any study roadmaps yet.</p>
-                <Button onClick={() => navigate('/goals')}>
-                  Create Your First Roadmap
-                </Button>
+          {/* Create New Roadmap Section */}
+          <Card className="mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-dark-text-primary mb-1 font-heading transition-colors">Create a New Roadmap</h2>
+                <p className="text-neutral-500 dark:text-dark-text-secondary text-sm transition-colors">Select a goal to generate a personalized study roadmap</p>
               </div>
-            </Card>
-          ) : (
-            goalIds.map((gid) => {
-              const goalData = goalsMap[gid]
-              const goalTitle = goalData?.title || `Goal #${gid}`
-              const goalSteps = groupedRoadmaps[gid]
-              const completedCount = goalSteps.filter((s: RoadmapStep) => s.is_completed).length
-              const totalCount = goalSteps.length
-              const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+              <Button onClick={() => navigate('/goals')}>
+                Browse Goals
+              </Button>
+            </div>
+          </Card>
 
-              return (
-                <motion.div
-                  key={gid}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <Card className="hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3 flex-1">
-                        <MapPin className="w-5 h-5 text-blue-600" />
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {goalTitle}
-                        </h3>
-                        <Badge variant={progress === 100 ? 'success' : progress > 0 ? 'warning' : 'default'}>
-                          {completedCount}/{totalCount} steps
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteRoadmap(gid)
-                          }}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          onClick={() => navigate(`/roadmaps/${gid}`)}
-                        >
-                          <ChevronRight className="w-5 h-5" />
-                        </Button>
-                      </div>
-                    </div>
+          {/* All Roadmaps List */}
+          <div className="space-y-4">
+            <h2 className="section-heading mb-4">Your Roadmaps</h2>
+            
+            {loadingAllRoadmaps ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary dark:text-primary-dark transition-colors" />
+              </div>
+            ) : goalIds.length === 0 ? (
+              <Card>
+                <div className="text-center py-16">
+                  <div className="w-16 h-16 rounded-full bg-neutral-100 dark:bg-dark-bg-tertiary flex items-center justify-center mx-auto mb-4 transition-colors">
+                    <BookOpen className="w-8 h-8 text-neutral-400 dark:text-dark-text-tertiary transition-colors" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-dark-text-primary mb-2 font-heading transition-colors">No Roadmaps Yet</h3>
+                  <p className="text-neutral-500 dark:text-dark-text-secondary mb-4 text-sm transition-colors">You haven't generated any study roadmaps yet.</p>
+                  <Button onClick={() => navigate('/goals')}>
+                    Create Your First Roadmap
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              goalIds.map((gid) => {
+                const goalData = goalsMap[gid]
+                const goalTitle = goalData?.title || `Goal #${gid}`
+                const goalSteps = groupedRoadmaps[gid]
+                const completedCount = goalSteps.filter((s: RoadmapStep) => s.is_completed).length
+                const totalCount = goalSteps.length
+                const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
 
-                    {/* Progress Bar */}
-                    <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-                      <div
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 h-2 rounded-full transition-all"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-
-                    {/* Preview Steps */}
-                    <div className="space-y-2">
-                      {goalSteps.slice(0, 3).map((step) => (
-                        <div key={step.id} className="flex items-center gap-2 text-sm">
-                          {step.is_completed ? (
-                            <CheckCircle2 className="w-4 h-4 text-green-600" />
-                          ) : (
-                            <Circle className="w-4 h-4 text-gray-400" />
-                          )}
-                          <span className={step.is_completed ? 'text-gray-500 line-through' : 'text-gray-700'}>
-                            Step {step.step_number}: {step.title}
-                          </span>
+                return (
+                  <motion.div
+                    key={gid}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <Card className="hover:border-primary dark:hover:border-primary-dark transition-colors cursor-pointer" onClick={() => navigate(`/roadmaps/${gid}`)}>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="w-8 h-8 rounded-lg bg-primary-muted dark:bg-primary/20 flex items-center justify-center transition-colors">
+                            <MapPin className="w-4 h-4 text-primary dark:text-primary-dark transition-colors" />
+                          </div>
+                          <h3 className="text-base font-semibold text-neutral-900 dark:text-dark-text-primary font-heading transition-colors">
+                            {goalTitle}
+                          </h3>
+                          <Badge variant={progress === 100 ? 'success' : progress > 0 ? 'warning' : 'default'}>
+                            {completedCount}/{totalCount} steps
+                          </Badge>
                         </div>
-                      ))}
-                      {goalSteps.length > 3 && (
-                        <p className="text-sm text-gray-500 pl-6">
-                          +{goalSteps.length - 3} more steps
-                        </p>
-                      )}
-                    </div>
-                  </Card>
-                </motion.div>
-              )
-            })
-          )}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteRoadmap(gid)
+                            }}
+                            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                          <ChevronRight className="w-5 h-5 text-neutral-400 dark:text-dark-text-tertiary transition-colors" />
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full bg-neutral-200 dark:bg-dark-bg-tertiary rounded-full h-1.5 mb-4 transition-colors">
+                        <div
+                          className="bg-primary dark:bg-primary-dark h-1.5 rounded-full transition-all"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+
+                      {/* Preview Steps */}
+                      <div className="space-y-2">
+                        {goalSteps.slice(0, 3).map((step) => (
+                          <div key={step.id} className="flex items-center gap-2 text-sm">
+                            {step.is_completed ? (
+                              <CheckCircle2 className="w-4 h-4 text-primary dark:text-primary-dark transition-colors" />
+                            ) : (
+                              <Circle className="w-4 h-4 text-neutral-300 dark:text-dark-text-tertiary transition-colors" />
+                            )}
+                            <span className={`text-sm ${step.is_completed ? 'text-neutral-400 dark:text-dark-text-tertiary line-through' : 'text-neutral-600 dark:text-dark-text-secondary'} transition-colors`}>
+                              Step {step.step_number}: {step.title}
+                            </span>
+                          </div>
+                        ))}
+                        {goalSteps.length > 3 && (
+                          <p className="text-sm text-neutral-400 dark:text-dark-text-tertiary pl-6 transition-colors">
+                            +{goalSteps.length - 3} more steps
+                          </p>
+                        )}
+                      </div>
+                    </Card>
+                  </motion.div>
+                )
+              })
+            )}
+          </div>
         </div>
       </div>
     )
@@ -292,230 +334,244 @@ export default function StudyRoadmap() {
 
   if (!goal) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <Card>
-          <div className="text-center py-12">
-            <p className="text-gray-600 mb-4">Goal not found.</p>
-            <Button onClick={() => navigate('/goals')}>
-              Go to Goals
-            </Button>
-          </div>
-        </Card>
+      <div className="bg-neutral-50 dark:bg-dark-bg-primary min-h-screen px-6 py-8 transition-colors duration-300">
+        <div className="max-w-4xl mx-auto">
+          <Card>
+            <div className="text-center py-16">
+              <p className="text-neutral-600 mb-4">Goal not found.</p>
+              <Button onClick={() => navigate('/goals')}>
+                Go to Goals
+              </Button>
+            </div>
+          </Card>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/roadmaps')}
-          className="mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Roadmaps
-        </Button>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">{goal.title}</h1>
-        {goal.description && (
-          <p className="text-lg text-gray-600">{goal.description}</p>
+    <div className="bg-neutral-50 dark:bg-dark-bg-primary min-h-screen px-6 py-8 transition-colors duration-300">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/roadmaps')}
+            className="mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Roadmaps
+          </Button>
+          <h1 className="font-heading text-2xl font-bold text-primary dark:text-primary-dark mb-2 transition-colors">{goal.title}</h1>
+          {goal.description && (
+            <p className="text-sm text-neutral-500 dark:text-dark-text-secondary transition-colors">{goal.description}</p>
+          )}
+        </div>
+
+        {/* Progress Bar */}
+        {steps.length > 0 && (
+          <Card className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-neutral-700 dark:text-dark-text-primary transition-colors">Progress</span>
+              <span className="text-sm font-semibold text-primary dark:text-primary-dark transition-colors">
+                {completedSteps} / {steps.length} steps
+              </span>
+            </div>
+            <div className="w-full bg-neutral-200 dark:bg-dark-bg-tertiary rounded-full h-2 transition-colors">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPercentage}%` }}
+                transition={{ duration: 0.8 }}
+                className="bg-primary dark:bg-primary-dark h-2 rounded-full transition-colors"
+              />
+            </div>
+          </Card>
         )}
-      </div>
 
-      {/* Progress Bar */}
-      {steps.length > 0 && (
-        <Card className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-gray-700">Progress</span>
-            <span className="text-sm font-semibold text-blue-600">
-              {completedSteps} / {steps.length} steps
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPercentage}%` }}
-              transition={{ duration: 0.8 }}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 h-2.5 rounded-full"
-            />
-          </div>
-        </Card>
-      )}
+        {/* Achievement Notifications */}
+        {showCelebration && (
+          <>
+            {/* Level Up Banner */}
+            {levelUpInfo && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="bg-primary rounded-card p-6 mb-6 text-white"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-white/10 rounded-xl flex items-center justify-center">
+                      <Crown className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold font-heading">Level Up!</h3>
+                      <p className="text-white/60">You reached level {levelUpInfo.newLevel}</p>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-white/60 mb-1">Level</p>
+                    <p className="text-3xl font-bold font-heading">{levelUpInfo.newLevel}</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
-      {/* Achievement Notifications */}
-      {showCelebration && (
-        <>
-          {/* Level Up Banner */}
-          {levelUpInfo && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl p-6 mb-6 text-white shadow-lg"
-            >
-              <div className="flex items-center justify-between">
+            {/* Achievements Banner */}
+            {newAchievements.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="bg-secondary rounded-card p-6 mb-6 text-white"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-white/10 rounded-xl">
+                    <Trophy className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold font-heading">Achievement{newAchievements.length > 1 ? 's' : ''} Unlocked!</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {newAchievements.map((achievement, idx) => (
+                    <div key={idx} className="bg-white rounded-card p-4 border border-neutral-200">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          achievement.difficulty === 'gold' ? 'bg-tertiary' :
+                          achievement.difficulty === 'silver' ? 'bg-neutral-400' :
+                          'bg-primary'
+                        }`}>
+                          <Star className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-neutral-900">{achievement.name}</p>
+                          <p className="text-xs text-primary font-medium">+{achievement.xp_reward} XP</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Goal Completed Message */}
+            {!levelUpInfo && newAchievements.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="bg-primary rounded-card p-6 mb-6 text-white"
+              >
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
-                    <Crown className="w-7 h-7 text-white" />
+                  <div className="w-14 h-14 bg-white/10 rounded-xl flex items-center justify-center">
+                    <CheckCircle2 className="w-7 h-7 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold">Level Up!</h3>
-                    <p className="text-white/80">You reached level {levelUpInfo.newLevel}</p>
+                    <h3 className="text-xl font-bold font-heading">Goal Completed!</h3>
+                    <p className="text-white/60">Congratulations on completing all roadmap steps!</p>
                   </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-sm text-white/60 mb-1">Level</p>
-                  <p className="text-3xl font-bold">{levelUpInfo.newLevel}</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
+          </>
+        )}
 
-          {/* Achievements Banner */}
-          {newAchievements.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 rounded-2xl p-6 mb-6 text-white shadow-lg"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-white/20 rounded-xl">
-                  <Trophy className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-xl font-bold">Achievement{newAchievements.length > 1 ? 's' : ''} Unlocked!</h3>
+        {/* Generate Roadmap Button */}
+        {steps.length === 0 && (
+          <Card>
+            <div className="text-center py-16">
+              <div className="w-16 h-16 rounded-full bg-primary-muted flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="w-8 h-8 text-primary" />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {newAchievements.map((achievement, idx) => (
-                  <div key={idx} className="bg-white/95 rounded-xl p-4 shadow">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        achievement.difficulty === 'gold' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                        achievement.difficulty === 'silver' ? 'bg-gradient-to-r from-gray-300 to-gray-400' :
-                        'bg-gradient-to-r from-amber-600 to-amber-700'
-                      }`}>
-                        <Star className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{achievement.name}</p>
-                        <p className="text-xs text-emerald-600 font-medium">+{achievement.xp_reward} XP</p>
+              <h2 className="text-xl font-bold text-neutral-900 mb-2 font-heading">
+                Generate Your Study Roadmap
+              </h2>
+              <p className="text-neutral-500 mb-6 text-sm">
+                Let AI create a personalized 10-step roadmap for your learning goal
+              </p>
+              <Button
+                onClick={handleGenerateRoadmap}
+                disabled={generating}
+                size="lg"
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    Generate Roadmap
+                  </>
+                )}
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Roadmap Steps */}
+        {steps.length > 0 && (
+          <div className="space-y-3">
+            {steps.map((step, index) => (
+              <motion.div
+                key={step.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Card>
+                <div className="flex items-start gap-4">
+                  <button
+                    data-step-id={step.id}
+                    onClick={() => handleToggleStep(step.id, step.is_completed)}
+                    className="mt-1 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {step.is_completed ? (
+                      <CheckCircle2 className="w-6 h-6 text-primary dark:text-primary-dark transition-colors" />
+                    ) : (
+                      <Circle className="w-6 h-6 text-neutral-300 dark:text-dark-text-tertiary hover:text-primary dark:hover:text-primary-dark transition-colors" />
+                    )}
+                  </button>
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className={`text-base font-semibold mb-1 font-heading transition-colors ${
+                          step.is_completed 
+                            ? 'text-neutral-500 dark:text-dark-text-tertiary line-through' 
+                            : 'text-neutral-900 dark:text-dark-text-primary'
+                        }`}>
+                          Step {step.step_number}: {step.title}
+                        </h3>
+                        <p className={`text-sm mb-2 transition-colors ${
+                          step.is_completed 
+                            ? 'text-neutral-400 dark:text-dark-text-tertiary' 
+                            : 'text-neutral-600 dark:text-dark-text-secondary'
+                        }`}>{step.description}</p>
+                        {step.estimated_hours > 0 && (
+                          <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary transition-colors">
+                            Estimated: {step.estimated_hours} hours
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Goal Completed Message */}
-          {!levelUpInfo && newAchievements.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 mb-6 text-white shadow-lg"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
-                  <CheckCircle2 className="w-7 h-7 text-white" />
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold">Goal Completed!</h3>
-                  <p className="text-white/80">Congratulations on completing all roadmap steps!</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </>
-      )}
-
-      {/* Generate Roadmap Button */}
-      {steps.length === 0 && (
-        <Card>
-          <div className="text-center py-12">
-            <Sparkles className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Generate Your Study Roadmap
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Let AI create a personalized 10-step roadmap for your learning goal
-            </p>
-            <Button
-              onClick={handleGenerateRoadmap}
-              disabled={generating}
-              size="lg"
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5 mr-2" />
-                  Generate Roadmap
-                </>
-              )}
-            </Button>
+                </Card>
+              </motion.div>
+            ))}
           </div>
-        </Card>
-      )}
+        )}
 
-      {/* Roadmap Steps */}
-      {steps.length > 0 && (
-        <div className="space-y-4">
-          {steps.map((step, index) => (
-            <motion.div
-              key={step.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <Card>
-              <div className="flex items-start gap-4">
-                <button
-                  onClick={() => handleToggleStep(step.id, step.is_completed)}
-                  className="mt-1 flex-shrink-0"
-                >
-                  {step.is_completed ? (
-                    <CheckCircle2 className="w-6 h-6 text-green-600" />
-                  ) : (
-                    <Circle className="w-6 h-6 text-gray-400 hover:text-blue-600 transition-colors" />
-                  )}
-                </button>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                        Step {step.step_number}: {step.title}
-                      </h3>
-                      <p className="text-gray-600 mb-3">{step.description}</p>
-                      {step.estimated_hours > 0 && (
-                        <p className="text-sm text-gray-500">
-                          Estimated: {step.estimated_hours} hours
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                </div>
-              </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* Limit Reached Modal */}
-      <LimitReachedModal
-        isOpen={limitModalOpen}
-        onClose={() => setLimitModalOpen(false)}
-        feature="roadmap generation"
-        limitType="daily"
-        currentCount={3}
-        limitCount={3}
-      />
+        {/* Limit Reached Modal */}
+        <LimitReachedModal
+          isOpen={limitModalOpen}
+          onClose={() => setLimitModalOpen(false)}
+          feature="roadmap generation"
+          limitType="daily"
+          currentCount={3}
+          limitCount={3}
+        />
+      </div>
     </div>
   )
 }

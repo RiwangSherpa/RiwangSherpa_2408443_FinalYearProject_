@@ -62,6 +62,7 @@ class GoalResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
 # -------------------------------------------------
 # Roadmap Schemas
 # -------------------------------------------------
@@ -84,6 +85,14 @@ class RoadmapStepResponse(BaseModel):
     is_completed: bool
     completed_at: Optional[datetime]
     ai_explanation: Optional[str]
+
+    model_config = {"from_attributes": True}
+
+
+# Batch response schema - defined after RoadmapStepResponse
+class GoalWithRoadmapResponse(BaseModel):
+    goal: GoalResponse
+    roadmap: List[RoadmapStepResponse]
 
     model_config = {"from_attributes": True}
 
@@ -200,12 +209,10 @@ class AnalyticsResponse(BaseModel):
     completed_goals: int
     current_streak_days: int
     average_quiz_score: float
+    total_quizzes: int
+    best_quiz_score: float
     weak_topics: List[str]
     strong_topics: List[str]
-
-# -------------------------------------------------
-# Authentication Schemas
-# -------------------------------------------------
 
 class UserRegister(BaseModel):
     email: EmailStr

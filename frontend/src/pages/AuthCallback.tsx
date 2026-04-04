@@ -36,7 +36,7 @@ export default function AuthCallback() {
   }, [navigate, searchParams, completeOAuthLogin])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -49,12 +49,12 @@ export default function AuthCallback() {
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
               className="inline-block"
             >
-              <Loader2 className="w-16 h-16 text-blue-600 dark:text-blue-400" />
+              <Loader2 className="w-16 h-16 text-primary" />
             </motion.div>
-            <h2 className="mt-6 text-2xl font-semibold text-gray-900 dark:text-white">
+            <h2 className="mt-6 text-2xl font-semibold text-neutral-900 font-heading">
               Completing Sign In...
             </h2>
-            <p className="mt-2 text-gray-600 dark:text-gray-300">
+            <p className="mt-2 text-neutral-600">
               Please wait while we verify your account
             </p>
           </>
@@ -63,13 +63,13 @@ export default function AuthCallback() {
         {error && (
           <>
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
-            <h2 className="mt-6 text-2xl font-semibold text-gray-900 dark:text-white">
+            <h2 className="mt-6 text-2xl font-semibold text-neutral-900 font-heading">
               Authentication Failed
             </h2>
-            <p className="mt-2 text-gray-600 dark:text-gray-300">{error}</p>
+            <p className="mt-2 text-neutral-600">{error}</p>
             <button
               onClick={() => navigate('/login')}
-              className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="mt-6 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-light transition-colors"
             >
               Back to Login
             </button>
@@ -83,12 +83,12 @@ export default function AuthCallback() {
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 200, damping: 15 }}
             >
-              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
+              <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
             </motion.div>
-            <h2 className="mt-6 text-2xl font-semibold text-gray-900 dark:text-white">
+            <h2 className="mt-6 text-2xl font-semibold text-neutral-900 font-heading">
               Sign In Successful!
             </h2>
-            <p className="mt-2 text-gray-600 dark:text-gray-300">
+            <p className="mt-2 text-neutral-600">
               Redirecting to dashboard...
             </p>
           </>

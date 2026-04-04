@@ -79,8 +79,26 @@ export interface Analytics {
   completed_goals: number
   current_streak_days: number
   average_quiz_score: number
+  total_quizzes: number
+  best_quiz_score: number
   weak_topics: string[]
   strong_topics: string[]
+  quiz_stats?: {
+    total_quizzes: number
+    average_score: number
+    best_score: number
+    worst_score: number
+    score_history: Array<{
+      date: string
+      score: number
+      topic: string
+    }>
+    topic_performance: Array<{
+      topic: string
+      average_score: number
+      quiz_count: number
+    }>
+  }
 }
 
 export interface User {
@@ -192,4 +210,14 @@ export interface UserSettings {
   theme_preference: string
   full_name?: string
   subscription_plan: string
+}
+
+export interface ActivityData {
+  id: string
+  type: 'goal_completed' | 'goal_created' | 'goal_progress' | 'quiz_attempt' | 'level_up' | 'study_session'
+  title: string
+  description: string
+  timestamp: string
+  goal_title?: string
+  metadata?: Record<string, any>
 }

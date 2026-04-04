@@ -13,86 +13,147 @@ try:
     st.session_state["collapsed"] = False
 except Exception:
     pass
-        
 
-UNSPLASH_BG = "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=1174&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-
-GLOBAL_STYLE = f"""
+GLOBAL_STYLE = """
 <style>
+/* Base styles - no backdrop-filter allowed */
+*, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
 /* hide Streamlit header, toolbar, main menu and footer */
-[data-testid="stHeader"], [data-testid="stToolbar"], #MainMenu, footer {{
+[data-testid="stHeader"], [data-testid="stToolbar"], #MainMenu, footer {
     display: none !important;
-}}
-.css-1v3fvcr, .css-1q8run, .css-1pahdxg, .css-1d391kg, .css-1q1n0s1, [data-testid="stToolbar"] {{
+}
+.css-1v3fvcr, .css-1q8run, .css-1pahdxg, .css-1d391kg, .css-1q1n0s1, [data-testid="stToolbar"] {
     display: none !important;
-}}
-/* Force sidebar to stay open and remove collapse toggle */
-[data-testid="stSidebar"] {{
+}
+
+/* App background - light neutral */
+.stApp {
+    background-color: #FAFAF8 !important;
+    color: #111827 !important;
+}
+
+/* Force sidebar styling */
+[data-testid="stSidebar"] {
     visibility: visible !important;
     transform: translateX(0) !important;
-    width: 320px !important;
-    min-width: 320px !important;
-}}
+    width: 280px !important;
+    min-width: 280px !important;
+    background-color: #FFFFFF !important;
+    border-right: 1px solid #E5E7EB !important;
+}
 button[title="Hide navigation menu"],
 button[title="Show navigation menu"],
-[data-testid="collapsedControl"] {{
+[data-testid="collapsedControl"] {
     display: none !important;
-}}
+}
 
-.stApp {{
-    position: relative;
-    overflow: hidden;
-}}
-.stApp::before {{
-    content: "";
-    position: fixed;
-    inset: 0;
-    background-image: url('{UNSPLASH_BG}');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    filter: saturate(0.9) brightness(0.6);
-    z-index: 0;
-    pointer-events: none;
-}}
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    color: #111827 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+p, span, div {
+    color: #374151 !important;
+    font-family: 'Inter', sans-serif !important;
+}
 
-[data-testid="stAppViewContainer"], .css-18e3th9, .block-container {{
-    position: relative;
-    z-index: 1;
-}}
-section[data-testid="stSidebar"] {{
-    background: rgba(0, 20, 10, 0.6) !important;
-    backdrop-filter: blur(8px) saturate(120%);
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
-}}
+/* Cards - flat white with border */
+.card {
+    background: #FFFFFF !important;
+    border: 1px solid #E5E7EB !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+    margin: 12px 0 !important;
+    box-shadow: none !important;
+}
 
-.card {{
-    backdrop-filter: blur(6px) saturate(120%);
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.04);
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
-    margin: 18px 12px;
-}}
-.stTextInput>div>div>input, .stTextArea>div>div>textarea {{
-    background: rgba(0,0,0,0.45) !important;
+/* Form inputs */
+.stTextInput>div>div>input, .stTextArea>div>div>textarea {
+    background: #FFFFFF !important;
+    color: #111827 !important;
+    border-radius: 8px !important;
+    padding: 10px 14px !important;
+    border: 1px solid #E5E7EB !important;
+    font-family: 'Inter', sans-serif !important;
+}
+.stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
+    border-color: #4F46E5 !important;
+    outline: none !important;
+}
+.stTextInput>div>div>input::placeholder, .stTextArea>div>div>textarea::placeholder {
+    color: #9CA3AF !important;
+}
+
+/* Buttons - primary green */
+.stButton>button {
+    background: #064E3B !important;
     color: #fff !important;
-    border-radius: 10px !important;
-    padding: 10px !important;
-    border: 1px solid rgba(255,255,255,0.04) !important;
-}}
-.stButton>button {{
-    background: linear-gradient(90deg,#4CAF50,#66BB6A) !important;
-    color: #fff !important;
-    border-radius: 10px !important;
-    padding: 8px 14px !important;
-    box-shadow: 0 6px 16px rgba(76,175,80,0.12);
-}}
-@media (max-width: 900px) {{
-    [data-testid="stSidebar"] {{ width: 260px !important; min-width: 260px !important; }}
-    .block-container {{ padding-left: 16px !important; padding-right: 16px !important; }}
-}}
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    border: none !important;
+    font-weight: 600 !important;
+    font-family: 'Inter', sans-serif !important;
+    transition: background-color 0.15s !important;
+    box-shadow: none !important;
+}
+.stButton>button:hover {
+    background: #065F46 !important;
+}
+.stButton>button:active {
+    transform: none !important;
+}
+
+/* Secondary buttons */
+.stButton>button[kind="secondary"] {
+    background: #FFFFFF !important;
+    color: #064E3B !important;
+    border: 1px solid #064E3B !important;
+}
+.stButton>button[kind="secondary"]:hover {
+    background: #D1FAE5 !important;
+}
+
+/* Radio buttons */
+.stRadio>div>div>label {
+    color: #374151 !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* Select boxes */
+.stSelectbox>div>div>div {
+    background: #FFFFFF !important;
+    border: 1px solid #E5E7EB !important;
+    border-radius: 8px !important;
+    color: #111827 !important;
+}
+
+/* Sidebar title */
+[data-testid="stSidebar"] h1 {
+    color: #064E3B !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 700 !important;
+}
+
+/* Sidebar markdown */
+[data-testid="stSidebar"] .stMarkdown {
+    color: #6B7280 !important;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    [data-testid="stSidebar"] { width: 260px !important; min-width: 260px !important; }
+    .block-container { padding-left: 16px !important; padding-right: 16px !important; }
+}
+
+/* Remove any remaining glass/blur effects */
+[data-testid="stAppViewContainer"] {
+    background: #FAFAF8 !important;
+}
 </style>
 """
 
@@ -114,7 +175,7 @@ page = st.sidebar.radio("Navigate", ["Home", "Roadmaps", "Quiz", "Profile"])
 
 with st.sidebar:
     st.markdown("### Settings")
-    theme = st.selectbox("Theme", ["Dark Nature", "Light", "Custom"], index=0)
+    theme = st.selectbox("Theme", ["Light"], index=0)
 
 with st.container():
     cols = st.columns([1, 3, 1])

@@ -18,47 +18,71 @@ class AchievementEngine:
     
     DEFAULT_ACHIEVEMENTS = [
         # Study & Streak Achievements
+        {"name": "Getting Started", "description": "Spend 10 minutes studying", 
+         "category": "study", "difficulty": "bronze", "xp": 20,
+         "trigger": {"type": "total_study_hours", "threshold": 0.17}},  # 10 minutes
+        
         {"name": "First Steps", "description": "Complete your first study session", 
          "category": "study", "difficulty": "bronze", "xp": 50,
          "trigger": {"type": "study_sessions", "threshold": 1}},
         
-        {"name": "Study Starter", "description": "Study for 10 hours total", 
-         "category": "study", "difficulty": "silver", "xp": 100,
-         "trigger": {"type": "total_study_hours", "threshold": 10}},
+        {"name": "Study Starter", "description": "Study for 1 hour total", 
+         "category": "study", "difficulty": "bronze", "xp": 100,
+         "trigger": {"type": "total_study_hours", "threshold": 1}},
         
-        {"name": "Week Warrior", "description": "Study for 7 consecutive days", 
+        {"name": "Week Warrior", "description": "Study for 5 consecutive days", 
          "category": "streak", "difficulty": "silver", "xp": 150,
+         "trigger": {"type": "streak_days", "threshold": 5}},
+        
+        {"name": "Consistent Learner", "description": "Maintain a 7-day study streak", 
+         "category": "streak", "difficulty": "silver", "xp": 300,
          "trigger": {"type": "streak_days", "threshold": 7}},
         
-        {"name": "Consistent Learner", "description": "Maintain a 30-day study streak", 
-         "category": "streak", "difficulty": "gold", "xp": 500,
-         "trigger": {"type": "streak_days", "threshold": 30}},
-        
         # Quiz Achievements
+        {"name": "First Quiz Attempt", "description": "Attempt any quiz", 
+         "category": "quiz", "difficulty": "bronze", "xp": 30,
+         "trigger": {"type": "quizzes_completed", "threshold": 1}},
+        
         {"name": "Quiz Novice", "description": "Complete your first quiz", 
          "category": "quiz", "difficulty": "bronze", "xp": 50,
          "trigger": {"type": "quizzes_completed", "threshold": 1}},
         
-        {"name": "Quiz Master", "description": "Complete 5 quizzes", 
+        {"name": "Quiz Master", "description": "Complete 3 quizzes", 
          "category": "quiz", "difficulty": "silver", "xp": 150,
-         "trigger": {"type": "quizzes_completed", "threshold": 5}},
+         "trigger": {"type": "quizzes_completed", "threshold": 3}},
         
         {"name": "Perfect Score", "description": "Score 100% on any quiz", 
          "category": "quiz", "difficulty": "gold", "xp": 200,
          "trigger": {"type": "perfect_quiz", "threshold": 1}},
         
         # Goal & Roadmap Achievements
-        {"name": "Goal Getter", "description": "Complete your first learning goal", 
-         "category": "goal", "difficulty": "silver", "xp": 200,
-         "trigger": {"type": "goals_completed", "threshold": 1}},
-        
-        {"name": "Overachiever", "description": "Complete 5 learning goals", 
-         "category": "goal", "difficulty": "gold", "xp": 400,
-         "trigger": {"type": "goals_completed", "threshold": 5}},
+        {"name": "First Step", "description": "Complete your first roadmap step", 
+         "category": "roadmap", "difficulty": "bronze", "xp": 30,
+         "trigger": {"type": "roadmap_step", "threshold": 1}},
         
         {"name": "Roadmap Beginner", "description": "Complete your first roadmap step", 
          "category": "roadmap", "difficulty": "bronze", "xp": 75,
          "trigger": {"type": "roadmap_step", "threshold": 1}},
+        
+        {"name": "First Goal", "description": "Complete your first learning goal", 
+         "category": "goal", "difficulty": "silver", "xp": 200,
+         "trigger": {"type": "goals_completed", "threshold": 1}},
+        
+        {"name": "Goal Getter", "description": "Complete your first learning goal", 
+         "category": "goal", "difficulty": "silver", "xp": 200,
+         "trigger": {"type": "goals_completed", "threshold": 1}},
+        
+        {"name": "Overachiever", "description": "Complete 3 learning goals", 
+         "category": "goal", "difficulty": "gold", "xp": 400,
+         "trigger": {"type": "goals_completed", "threshold": 3}},
+        
+        {"name": "Quick Learner", "description": "Complete 2 steps in a day", 
+         "category": "roadmap", "difficulty": "silver", "xp": 50,
+         "trigger": {"type": "daily_steps", "threshold": 2}},
+        
+        {"name": "Halfway There", "description": "Complete 50% of a goal", 
+         "category": "roadmap", "difficulty": "silver", "xp": 75,
+         "trigger": {"type": "goal_50_percent", "threshold": 1}},
     ]
     
     def __init__(self, db: Session):
@@ -268,6 +292,36 @@ class GamificationService:
         
         elif trigger_type == "roadmap_step":
             return stats.roadmap_steps_completed >= threshold
+        
+        elif trigger_type == "daily_steps":
+            # Check if user completed 2+ steps in a single day
+            from datetime import datetime, timedelta
+            today = datetime.utcnow().date()
+            steps_today = self.db.query(models.RoadmapStep).join(models.Goal).filter(
+                models.Goal.user_id == user_id,
+                models.RoadmapStep.is_completed == True,
+                func.date(models.RoadmapStep.completed_at) == today
+            ).count()
+            return steps_today >= threshold
+        
+        elif trigger_type == "goal_50_percent":
+            # Check if any goal has 50%+ completion
+            goals = self.db.query(models.Goal).filter(
+                models.Goal.user_id == user_id
+            ).all()
+            
+            for goal in goals:
+                total_steps = self.db.query(models.RoadmapStep).filter(
+                    models.RoadmapStep.goal_id == goal.id
+                ).count()
+                completed_steps = self.db.query(models.RoadmapStep).filter(
+                    models.RoadmapStep.goal_id == goal.id,
+                    models.RoadmapStep.is_completed == True
+                ).count()
+                
+                if total_steps > 0 and (completed_steps / total_steps) >= 0.5:
+                    return True
+            return False
         
         return False
     

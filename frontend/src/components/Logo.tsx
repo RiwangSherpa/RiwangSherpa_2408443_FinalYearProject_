@@ -48,12 +48,12 @@ export default function Logo({
         />
       ) : (
         // Fallback placeholder
-        <div className={`${sizeClasses[size]} bg-blue-600 rounded-lg flex items-center justify-center`}>
-          <span className="text-white font-bold text-xs">SB</span>
+        <div className={`${sizeClasses[size]} bg-primary rounded-lg flex items-center justify-center`}>
+          <span className="text-white font-bold text-xs font-heading">SB</span>
         </div>
       )}
       {showText && (
-        <span className={`font-bold text-gray-900 dark:text-white transition-colors ${textSizeClasses[size]}`}>
+        <span className={`font-heading font-bold text-neutral-900 dark:text-dark-text-primary ${textSizeClasses[size]} transition-colors`}>
           Study Buddy
         </span>
       )}

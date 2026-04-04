@@ -1,67 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  * {
-    @apply border-gray-200 dark:border-gray-700;
+  *, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
   }
-  
+
   html {
-    @apply transition-colors duration-200;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
-  
+
   body {
-    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans antialiased transition-colors duration-200;
+    font-family: 'Inter', sans-serif;
+    background-color: #FAFAF8;
+    color: #111827;
+    margin: 0;
+    padding: 0;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
-  
+
+  /* Dark mode base styles */
+  .dark body {
+    background-color: #030712;
+    color: #F9FAFB;
+  }
+
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold text-gray-900 dark:text-white transition-colors duration-200;
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
 }
 
 @layer components {
-  /* Input styles */
-  .input {
-    @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg 
-           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-           transition-all duration-200
-           text-sm;
+  .btn-primary {
+    @apply bg-primary text-white text-sm font-semibold px-5 py-2.5 rounded-lg
+           hover:bg-primary-light transition-colors duration-150 cursor-pointer;
+  }
+  .dark .btn-primary {
+    @apply bg-primary-dark hover:bg-primary/90;
   }
   
-  /* Textarea */
-  textarea.input {
-    @apply resize-none;
+  .btn-secondary {
+    @apply bg-white text-primary border border-primary text-sm font-semibold px-5 py-2.5 rounded-lg
+           hover:bg-primary-muted transition-colors duration-150 cursor-pointer;
+  }
+  .dark .btn-secondary {
+    @apply bg-dark-bg-tertiary text-primary-dark border-primary-dark hover:bg-dark-hover-primary;
   }
   
-  /* Smooth scroll */
-  html {
-    scroll-behavior: smooth;
+  .btn-outlined {
+    @apply bg-white text-neutral-800 border border-neutral-200 text-sm font-medium px-5 py-2.5 rounded-lg
+           hover:bg-neutral-100 transition-colors duration-150 cursor-pointer;
+  }
+  .dark .btn-outlined {
+    @apply bg-dark-bg-secondary text-dark-text-primary border-dark-border-primary hover:bg-dark-hover-primary;
+  }
+  
+  .card {
+    @apply bg-white border border-neutral-200 rounded-card p-4;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+  .dark .card {
+    @apply bg-dark-bg-secondary border-dark-border-primary;
+  }
+  
+  .input-base {
+    @apply bg-white border border-neutral-200 rounded-lg px-4 py-2 text-sm text-neutral-800
+           placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-secondary
+           focus:border-transparent w-full h-9 font-body;
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  }
+  .dark .input-base {
+    @apply bg-dark-bg-tertiary border-dark-border-primary text-dark-text-primary 
+           placeholder-dark-text-tertiary focus:ring-secondary-dark;
+  }
+  
+  .section-heading {
+    @apply font-heading text-lg font-semibold text-neutral-900;
+    transition: color 0.3s ease;
+  }
+  .dark .section-heading {
+    @apply text-dark-text-primary;
+  }
+  
+  .label-caps {
+    @apply text-xs font-semibold uppercase tracking-widest text-neutral-400;
+    transition: color 0.3s ease;
+  }
+  .dark .label-caps {
+    @apply text-dark-text-tertiary;
+  }
+}
+
+@layer utilities {
+  .prose-custom {
+    @apply prose prose-sm max-w-none font-body text-neutral-800
+         prose-headings:font-heading prose-headings:text-neutral-900
+         prose-a:text-secondary hover:prose-a:text-secondary/80
+         prose-code:bg-neutral-100 prose-code:text-primary prose-code:rounded prose-code:px-1
+         prose-pre:bg-neutral-900 prose-pre:rounded-card prose-pre:border prose-pre:border-neutral-700;
+  }
+  .dark .prose-custom {
+    @apply prose text-dark-text-primary
+         prose-headings:text-dark-text-primary
+         prose-a:text-secondary-dark hover:prose-a:text-primary-dark/80
+         prose-code:bg-dark-bg-tertiary prose-code:text-primary-dark
+         prose-pre:bg-dark-bg-primary prose-pre:border-dark-border-secondary;
   }
 
-  /* Blob animation */
-  @keyframes blob {
-    0%, 100% {
-      transform: translate(0, 0) scale(1);
-    }
-    33% {
-      transform: translate(30px, -50px) scale(1.1);
-    }
-    66% {
-      transform: translate(-20px, 20px) scale(0.9);
-    }
-  }
+  /* Dark mode utility classes */
+  .bg-primary-dark { background-color: #030712; }
+  .bg-secondary-dark { background-color: #111827; }
+  .bg-tertiary-dark { background-color: #1F2937; }
+  .text-primary-dark { color: #F9FAFB; }
+  .text-secondary-dark { color: #D1D5DB; }
+  .text-tertiary-dark { color: #9CA3AF; }
+  .border-primary-dark { border-color: #374151; }
+  .border-secondary-dark { border-color: #4B5563; }
+  .border-tertiary-dark { border-color: #6B7280; }
+  .hover-primary-dark:hover { background-color: #1F2937; }
+  .hover-secondary-dark:hover { background-color: #374151; }
+}
 
-  .animate-blob {
-    animation: blob 7s infinite;
-  }
+/* Highlight.js code block styling */
+.hljs { 
+  background: #111827 !important; 
+  border-radius: 12px !important; 
+  padding: 1rem !important; 
+  font-size: 0.8125rem !important; 
+}
+.hljs-keyword, .hljs-selector-tag { color: #86EFAC !important; }
+.hljs-string, .hljs-attr { color: #FDE68A !important; }
+.hljs-comment { color: #6B7280 !important; }
+.hljs-number { color: #A5B4FC !important; }
+.hljs-built_in { color: #5EEAD4 !important; }
 
-  .animation-delay-2000 {
-    animation-delay: 2s;
-  }
-
-  .animation-delay-4000 {
-    animation-delay: 4s;
-  }
+/* Dark mode highlight.js styles */
+.dark .hljs {
+  background: #1F2937 !important;
 }
 

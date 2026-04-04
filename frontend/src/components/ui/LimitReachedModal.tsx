@@ -107,7 +107,7 @@ export default function LimitReachedModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-white/40 z-50"
           />
 
           {/* Modal */}
@@ -117,16 +117,16 @@ export default function LimitReachedModal({
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="fixed inset-0 flex items-center justify-center z-50 p-4"
           >
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full max-w-md mx-auto">
+            <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden w-full max-w-md mx-auto">
               {/* Header */}
-              <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 flex items-center justify-between">
+              <div className="bg-primary-muted px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Crown className="w-6 h-6 text-white" />
-                  <h3 className="text-lg font-bold text-white">{getTitle()}</h3>
+                  <Crown className="w-6 h-6 text-primary" />
+                  <h3 className="text-lg font-bold text-primary font-heading">{getTitle()}</h3>
                 </div>
                 <button
                   onClick={onClose}
-                  className="text-white/80 hover:text-white transition-colors"
+                  className="text-primary opacity-70 hover:opacity-100"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -140,14 +140,14 @@ export default function LimitReachedModal({
                 {limitType === 'daily' && currentCount !== undefined && limitCount !== undefined && (
                   <div className="mb-6">
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-gray-600 dark:text-gray-400">Daily Usage</span>
-                      <span className="font-medium text-gray-800 dark:text-gray-200">
+                      <span className="text-neutral-500">Daily Usage</span>
+                      <span className="font-medium text-neutral-700">
                         {currentCount} / {limitCount}
                       </span>
                     </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                    <div className="w-full bg-neutral-200 rounded-full h-2">
                       <div
-                        className="bg-gradient-to-r from-amber-500 to-orange-500 h-2.5 rounded-full"
+                        className="bg-primary h-2 rounded-full"
                         style={{ width: `${(currentCount / limitCount) * 100}%` }}
                       />
                     </div>
@@ -176,8 +176,8 @@ export default function LimitReachedModal({
                 </div>
 
                 {/* Pro benefits teaser */}
-                <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                <div className="mt-6 pt-4 border-t border-neutral-200">
+                  <p className="text-xs text-neutral-500 text-center">
                     Pro includes: Unlimited {feature}, AI Tutor, Advanced Analytics, and more!
                   </p>
                 </div>

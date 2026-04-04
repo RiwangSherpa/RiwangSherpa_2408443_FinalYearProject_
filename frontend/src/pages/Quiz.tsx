@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, XCircle, Loader2, Sparkles, BookOpen, Calendar
 import { motion } from 'framer-motion'
 import { goalsApi, quizzesApi } from '../lib/api'
 import { Goal, QuizQuestion, QuizResult } from '../types'
+import { useData } from '../contexts/DataContext'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
@@ -27,6 +28,7 @@ interface SavedQuiz {
 export default function Quiz() {
   const { goalId } = useParams<{ goalId?: string }>()
   const navigate = useNavigate()
+  const { refreshActivities } = useData()
   const [goal, setGoal] = useState<Goal | null>(null)
   const [questions, setQuestions] = useState<QuizQuestion[]>([])
   const [answers, setAnswers] = useState<number[]>([])
@@ -38,8 +40,6 @@ export default function Quiz() {
   const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>([])
   const [loadingQuizzes, setLoadingQuizzes] = useState(false)
   const [goalsMap, setGoalsMap] = useState<Record<number, Goal>>({})
-  const [viewingQuiz, setViewingQuiz] = useState<SavedQuiz & { questions?: any[] } | null>(null)
-  const [loadingQuizDetails, setLoadingQuizDetails] = useState(false)
   const [newAchievements, setNewAchievements] = useState<any[]>([])
   const [levelUpInfo, setLevelUpInfo] = useState<{oldLevel: number, newLevel: number} | null>(null)
   const [limitModalOpen, setLimitModalOpen] = useState(false)
@@ -55,19 +55,25 @@ export default function Quiz() {
   const loadSavedQuizzes = async () => {
     try {
       setLoadingQuizzes(true)
+      console.log('[Quiz] Fetching saved quizzes...')
       const [quizzesRes, goalsRes] = await Promise.all([
         quizzesApi.getMyQuizzes(),
         goalsApi.getAll()
       ])
-      setSavedQuizzes(quizzesRes.data)
+      console.log('[Quiz] Quizzes fetched:', quizzesRes.data?.length || 0, 'quizzes')
+      setSavedQuizzes(quizzesRes.data || [])
       // Create a map of goal_id to goal for quick lookup
       const goalsMapData = goalsRes.data.reduce((acc: Record<number, Goal>, g: Goal) => {
         acc[g.id] = g
         return acc
       }, {})
       setGoalsMap(goalsMapData)
-    } catch (error) {
-      console.error('Failed to load saved quizzes:', error)
+    } catch (error: any) {
+      console.error('[Quiz] Failed to load saved quizzes:', error)
+      if (error.response?.status === 422) {
+        console.error('[Quiz] Validation error:', error.response.data)
+      }
+      setSavedQuizzes([])
     } finally {
       setLoadingQuizzes(false)
     }
@@ -146,6 +152,8 @@ export default function Quiz() {
       }
       // Always refresh saved quizzes list after submission
       loadSavedQuizzes()
+      // Refresh activities to show recent quiz action
+      refreshActivities()
     } catch (error) {
       console.error('Failed to submit quiz:', error)
       alert('Failed to submit quiz. Please try again.')
@@ -164,17 +172,8 @@ export default function Quiz() {
     })
   }
 
-  const handleViewQuiz = async (quiz: SavedQuiz) => {
-    try {
-      setLoadingQuizDetails(true)
-      const response = await quizzesApi.getById(quiz.id)
-      setViewingQuiz({ ...quiz, questions: response.data.questions })
-    } catch (error) {
-      console.error('Failed to load quiz details:', error)
-      alert('Failed to load quiz details')
-    } finally {
-      setLoadingQuizDetails(false)
-    }
+  const handleViewQuiz = (quiz: SavedQuiz) => {
+    navigate(`/quiz/review/${quiz.id}`)
   }
 
   const handleDeleteQuiz = async (quizId: number) => {
@@ -183,9 +182,6 @@ export default function Quiz() {
     try {
       await quizzesApi.delete(quizId)
       setSavedQuizzes(savedQuizzes.filter(q => q.id !== quizId))
-      if (viewingQuiz?.id === quizId) {
-        setViewingQuiz(null)
-      }
     } catch (error) {
       console.error('Failed to delete quiz:', error)
       alert('Failed to delete quiz')
@@ -195,360 +191,250 @@ export default function Quiz() {
   // Main quiz page (no goal selected)
   if (!goalId) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Quizzes</h1>
-          <p className="text-gray-600">View all your completed quizzes and start new ones</p>
-        </div>
-
-        {/* Start New Quiz Section */}
-        <Card className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-1">Start a New Quiz</h2>
-              <p className="text-gray-600">Select a goal to generate a personalized quiz</p>
-            </div>
-            <Button onClick={() => navigate('/goals')}>
-              Browse Goals
-            </Button>
+      <div className="bg-neutral-50 dark:bg-dark-bg-primary min-h-screen px-6 py-8 transition-colors duration-300">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h1 className="font-heading text-2xl font-bold text-primary dark:text-primary-dark mb-2 transition-colors">My Quizzes</h1>
+            <p className="text-sm text-neutral-500 dark:text-dark-text-secondary transition-colors">View all your completed quizzes and start new ones</p>
           </div>
-        </Card>
 
-        {/* Saved Quizzes List */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Completed Quizzes</h2>
-          
-          {loadingQuizzes ? (
-            <Card>
-              <div className="text-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-                <p className="text-gray-600">Loading quizzes...</p>
+          {/* Start New Quiz Section */}
+          <Card className="mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-dark-text-primary mb-1 font-heading transition-colors">Start a New Quiz</h2>
+                <p className="text-neutral-500 dark:text-dark-text-secondary text-sm transition-colors">Select a goal to generate a personalized quiz</p>
               </div>
-            </Card>
-          ) : savedQuizzes.length === 0 ? (
-            <Card>
-              <div className="text-center py-12">
-                <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No quizzes yet</h3>
-                <p className="text-gray-600 mb-4">Complete your first quiz to see it here</p>
-                <Button onClick={() => navigate('/goals')}>
-                  Start Your First Quiz
-                </Button>
-              </div>
-            </Card>
-          ) : (
-            savedQuizzes.map((quiz) => (
-              <motion.div
-                key={quiz.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <Card className="hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{quiz.topic}</h3>
-                        <Badge 
-                          variant={quiz.score >= 70 ? 'success' : quiz.score >= 50 ? 'warning' : 'error'}
-                        >
-                          {Math.round(quiz.score)}%
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <span className="flex items-center gap-1">
-                          <Target className="w-4 h-4" />
-                          {goalsMap[quiz.goal_id]?.title || `Goal #${quiz.goal_id}`}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {formatDate(quiz.completed_at)}
-                        </span>
-                        <span>
-                          {quiz.correct_answers} / {quiz.total_questions} correct
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewQuiz(quiz)}
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteQuiz(quiz.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-            ))
-          )}
-        </div>
+              <Button onClick={() => navigate('/goals')}>
+                Browse Goals
+              </Button>
+            </div>
+          </Card>
 
-        {/* Quiz Details Modal */}
-        {viewingQuiz && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-            onClick={() => setViewingQuiz(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.95 }}
-              animate={{ scale: 1 }}
-              className="bg-white rounded-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">{viewingQuiz.topic}</h2>
-                  <Button variant="ghost" onClick={() => setViewingQuiz(null)}>Close</Button>
+          {/* Saved Quizzes List */}
+          <div className="space-y-4">
+            <h2 className="section-heading mb-4">Completed Quizzes</h2>
+            
+            {loadingQuizzes ? (
+              <Card>
+                <div className="text-center py-16">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary dark:text-primary-dark mx-auto mb-4 transition-colors" />
+                  <p className="text-neutral-600 dark:text-dark-text-secondary transition-colors">Loading quizzes...</p>
                 </div>
-                
-                {loadingQuizDetails ? (
-                  <div className="text-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-                    <p className="text-gray-600">Loading quiz details...</p>
+              </Card>
+            ) : savedQuizzes.length === 0 ? (
+              <Card>
+                <div className="text-center py-16">
+                  <div className="w-16 h-16 rounded-full bg-neutral-100 dark:bg-dark-bg-tertiary flex items-center justify-center mx-auto mb-4 transition-colors">
+                    <BookOpen className="w-8 h-8 text-neutral-400 dark:text-dark-text-tertiary transition-colors" />
                   </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span className="flex items-center gap-1">
-                        <Target className="w-4 h-4" />
-                        {goalsMap[viewingQuiz.goal_id]?.title || `Goal #${viewingQuiz.goal_id}`}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {formatDate(viewingQuiz.completed_at)}
-                      </span>
-                      <span>
-                        Score: {Math.round(viewingQuiz.score)}% ({viewingQuiz.correct_answers}/{viewingQuiz.total_questions})
-                      </span>
-                    </div>
-                    
-                    {viewingQuiz.questions?.map((question: any, qIndex: number) => (
-                      <Card key={qIndex} className="p-4">
-                        <h3 className="font-semibold text-gray-900 mb-2">Question {qIndex + 1}</h3>
-                        <div className="prose prose-sm max-w-none mb-3">
-                          <ReactMarkdown 
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeRaw, rehypeHighlight]}
-                            components={{
-                              code: ({node, inline, className, children, ...props}: any) => {
-                                const match = /language-(\w+)/.exec(className || '')
-                                return !inline && match ? (
-                                  <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-                                    <code className={className} {...props}>
-                                      {children}
-                                    </code>
-                                  </pre>
-                                ) : (
-                                  <code className="bg-gray-200 px-2 py-1 rounded text-sm font-mono" {...props}>
-                                    {children}
-                                  </code>
-                                )
-                              }
-                            }}
+                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-dark-text-primary mb-2 font-heading transition-colors">No quizzes yet</h3>
+                  <p className="text-neutral-500 dark:text-dark-text-secondary mb-4 text-sm transition-colors">Complete your first quiz to see it here</p>
+                  <Button onClick={() => navigate('/goals')}>
+                    Start Your First Quiz
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              savedQuizzes.map((quiz) => (
+                <motion.div
+                  key={quiz.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Card className="hover:border-primary transition-colors cursor-pointer" onClick={() => handleViewQuiz(quiz)}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-base font-semibold text-neutral-900 dark:text-dark-text-primary font-heading transition-colors">{quiz.topic}</h3>
+                          <Badge 
+                            variant={quiz.score >= 70 ? 'success' : quiz.score >= 50 ? 'warning' : 'error'}
                           >
-                            {question.question}
-                          </ReactMarkdown>
+                            {Math.round(quiz.score)}%
+                          </Badge>
                         </div>
-                        <div className="space-y-1">
-                          {question.options.map((option: string, oIndex: number) => (
-                            <div key={oIndex} className={`p-2 rounded ${
-                              oIndex === question.correct_answer 
-                                ? 'bg-green-100 text-green-800 border border-green-300' 
-                                : 'bg-gray-50 text-gray-600'
-                            }`}>
-                              {String.fromCharCode(65 + oIndex)}. {option}
-                              {oIndex === question.correct_answer && (
-                                <span className="ml-2 text-green-600 font-medium">✓ Correct</span>
-                              )}
-                            </div>
-                          ))}
+                        <div className="flex items-center gap-4 text-sm text-neutral-500">
+                          <span className="flex items-center gap-1">
+                            <Target className="w-4 h-4" />
+                            {goalsMap[quiz.goal_id]?.title || `Goal #${quiz.goal_id}`}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                            {formatDate(quiz.completed_at)}
+                          </span>
+                          <span>
+                            {quiz.correct_answers} / {quiz.total_questions} correct
+                          </span>
                         </div>
-                        {question.explanation && (
-                          <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <p className="text-sm text-blue-800">
-                              <strong>Explanation:</strong> {question.explanation}
-                            </p>
-                          </div>
-                        )}
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <ChevronRight className="w-5 h-5 text-neutral-400" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteQuiz(quiz.id)
+                          }}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     )
   }
 
   if (!goal) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <Card>
-          <div className="text-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">Loading goal...</p>
-          </div>
-        </Card>
+      <div className="bg-neutral-50 dark:bg-dark-bg-primary min-h-screen px-6 py-8 transition-colors duration-300">
+        <div className="max-w-4xl mx-auto">
+          <Card>
+            <div className="text-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-primary dark:text-primary-dark mx-auto mb-4 transition-colors" />
+              <p className="text-neutral-600 dark:text-dark-text-secondary transition-colors">Loading goal...</p>
+            </div>
+          </Card>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/quiz')}
-          className="mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Quizzes
-        </Button>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Quiz: {goal.title}</h1>
-        <p className="text-gray-600">Test your knowledge with AI-generated questions</p>
-      </div>
+    <div className="bg-neutral-50 dark:bg-dark-bg-primary min-h-screen px-6 py-8 transition-colors duration-300">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/quiz')}
+            className="mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Quizzes
+          </Button>
+          <h1 className="font-heading text-2xl font-bold text-primary dark:text-primary-dark mb-2 transition-colors">Quiz: {goal.title}</h1>
+          <p className="text-sm text-neutral-500 dark:text-dark-text-secondary transition-colors">Test your knowledge with AI-generated questions</p>
+        </div>
 
-      {/* Quiz Generator */}
-      {questions.length === 0 && (
-        <Card className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Generate Quiz</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Topic (optional - will use goal title if empty)
-              </label>
-              <input
-                type="text"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                className="input"
-                placeholder={`e.g., React Hooks, Python Functions (default: ${goal.title})`}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Difficulty
-              </label>
-              <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value as any)}
-                className="input"
+        {/* Quiz Generator */}
+        {questions.length === 0 && (
+          <Card className="mb-6">
+            <h2 className="section-heading mb-6">Generate Quiz</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-800 dark:text-dark-text-primary mb-2 transition-colors">
+                  Topic (optional - will use goal title if empty)
+                </label>
+                <input
+                  type="text"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  className="input-base"
+                  placeholder={`e.g., React Hooks, Python Functions (default: ${goal.title})`}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-800 dark:text-dark-text-primary mb-2 transition-colors">
+                  Difficulty
+                </label>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value as any)}
+                  className="input-base"
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+              <Button
+                onClick={handleGenerateQuiz}
+                disabled={generating}
+                className="w-full"
               >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
+                {generating ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    Generate Quiz
+                  </>
+                )}
+              </Button>
             </div>
+          </Card>
+        )}
+
+        {/* Quiz Questions */}
+        {questions.length > 0 && !result && (
+          <div className="space-y-4 mb-8">
+            {questions.map((question, qIndex) => (
+              <motion.div
+                key={qIndex}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: qIndex * 0.1 }}
+              >
+                <Card>
+                  <h3 className="text-base font-semibold text-neutral-900 dark:text-dark-text-primary mb-4 font-heading transition-colors">
+                    Question {qIndex + 1}
+                  </h3>
+                  <div className="mb-4 p-4 bg-neutral-50 dark:bg-dark-bg-tertiary rounded-lg prose-custom transition-colors">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw, rehypeHighlight]}
+                    >
+                      {question.question}
+                    </ReactMarkdown>
+                  </div>
+                  <div className="space-y-2">
+                    {question.options.map((option, oIndex) => (
+                      <button
+                        key={oIndex}
+                        onClick={() => handleSelectAnswer(qIndex, oIndex)}
+                        className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
+                          answers[qIndex] === oIndex
+                            ? 'border-primary dark:border-primary-dark bg-primary-muted dark:bg-primary/20'
+                            : 'border-neutral-200 dark:border-dark-border-primary hover:border-primary dark:hover:border-primary-dark hover:bg-neutral-50 dark:hover:bg-dark-bg-tertiary'
+                        }`}
+                      >
+                        <span className="font-medium text-neutral-700 dark:text-dark-text-primary transition-colors">
+                          {String.fromCharCode(65 + oIndex)}. {option}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
             <Button
-              onClick={handleGenerateQuiz}
-              disabled={generating}
+              onClick={handleSubmit}
+              disabled={loading || answers.some(a => a === -1)}
               className="w-full"
+              size="lg"
             >
-              {generating ? (
+              {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Generating...
+                  Submitting...
                 </>
               ) : (
-                <>
-                  <Sparkles className="w-5 h-5 mr-2" />
-                  Generate Quiz
-                </>
+                'Submit Quiz'
               )}
             </Button>
           </div>
-        </Card>
-      )}
-
-      {/* Quiz Questions */}
-      {questions.length > 0 && !result && (
-        <div className="space-y-6 mb-8">
-          {questions.map((question, qIndex) => (
-            <motion.div
-              key={qIndex}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: qIndex * 0.1 }}
-            >
-              <Card>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Question {qIndex + 1}
-                </h3>
-                <div className="mb-4 p-4 bg-gray-50 rounded-lg prose prose-sm max-w-none">
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeRaw, rehypeHighlight]}
-                    components={{
-                      code: ({node, inline, className, children, ...props}: any) => {
-                        const match = /language-(\w+)/.exec(className || '')
-                        return !inline && match ? (
-                          <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-                            <code className={className} {...props}>
-                              {children}
-                            </code>
-                          </pre>
-                        ) : (
-                          <code className="bg-gray-200 px-2 py-1 rounded text-sm font-mono" {...props}>
-                            {children}
-                          </code>
-                        )
-                      }
-                    }}
-                  >
-                    {question.question}
-                  </ReactMarkdown>
-                </div>
-                <div className="space-y-2">
-                  {question.options.map((option, oIndex) => (
-                    <button
-                      key={oIndex}
-                      onClick={() => handleSelectAnswer(qIndex, oIndex)}
-                      className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                        answers[qIndex] === oIndex
-                          ? 'border-blue-500 bg-blue-50 shadow-sm'
-                          : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span className="font-medium text-gray-700">
-                        {String.fromCharCode(65 + oIndex)}. {option}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-          <Button
-            onClick={handleSubmit}
-            disabled={loading || answers.some(a => a === -1)}
-            className="w-full"
-            size="lg"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Submitting...
-              </>
-            ) : (
-              'Submit Quiz'
-            )}
-          </Button>
-        </div>
-      )}
+        )}
 
       {/* Quiz Results */}
       {result && (
@@ -562,21 +448,21 @@ export default function Quiz() {
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl p-6 mb-6 text-white shadow-lg"
+                className="bg-primary dark:bg-primary-dark rounded-card p-6 mb-6 text-white transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+                    <div className="w-14 h-14 bg-white/10 rounded-xl flex items-center justify-center">
                       <Crown className="w-7 h-7 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold">Level Up!</h3>
-                      <p className="text-white/80">You reached level {levelUpInfo.newLevel}</p>
+                      <h3 className="text-xl font-bold font-heading">Level Up!</h3>
+                      <p className="text-white/60">You reached level {levelUpInfo.newLevel}</p>
                     </div>
                   </div>
                   <div className="text-center">
                     <p className="text-sm text-white/60 mb-1">Level</p>
-                    <p className="text-3xl font-bold">{levelUpInfo.newLevel}</p>
+                    <p className="text-3xl font-bold font-heading">{levelUpInfo.newLevel}</p>
                   </div>
                 </div>
               </motion.div>
@@ -587,28 +473,28 @@ export default function Quiz() {
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 rounded-2xl p-6 mb-6 text-white shadow-lg"
+                className="bg-secondary dark:bg-secondary-dark rounded-card p-6 mb-6 text-white transition-colors"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-white/20 rounded-xl">
+                  <div className="p-2 bg-white/10 rounded-xl">
                     <Trophy className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold">Achievement{newAchievements.length > 1 ? 's' : ''} Unlocked!</h3>
+                  <h3 className="text-xl font-bold font-heading">Achievement{newAchievements.length > 1 ? 's' : ''} Unlocked!</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {newAchievements.map((achievement, idx) => (
-                    <div key={idx} className="bg-white/95 rounded-xl p-4 shadow">
+                    <div key={idx} className="bg-white dark:bg-dark-bg-secondary rounded-card p-4 border border-neutral-200 dark:border-dark-border-primary transition-colors">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          achievement.difficulty === 'gold' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                          achievement.difficulty === 'silver' ? 'bg-gradient-to-r from-gray-300 to-gray-400' :
-                          'bg-gradient-to-r from-amber-600 to-amber-700'
+                          achievement.difficulty === 'gold' ? 'bg-tertiary' :
+                          achievement.difficulty === 'silver' ? 'bg-neutral-400' :
+                          'bg-primary'
                         }`}>
                           <Star className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">{achievement.name}</p>
-                          <p className="text-xs text-emerald-600 font-medium">+{achievement.xp_reward} XP</p>
+                          <p className="font-semibold text-neutral-900 dark:text-dark-text-primary transition-colors">{achievement.name}</p>
+                          <p className="text-xs text-primary font-medium">+{achievement.xp_reward} XP</p>
                         </div>
                       </div>
                     </div>
@@ -618,10 +504,10 @@ export default function Quiz() {
             )}
 
             <div className="text-center mb-6">
-              <div className="text-6xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+              <div className="text-5xl font-bold text-primary dark:text-primary-dark mb-2 font-heading transition-colors">
                 {Math.round(result.score)}%
               </div>
-              <p className="text-lg text-gray-600">
+              <p className="text-sm text-neutral-600 dark:text-dark-text-secondary transition-colors">
                 You got {result.correct_answers} out of {result.total_questions} questions correct
               </p>
             </div>
@@ -634,54 +520,38 @@ export default function Quiz() {
                 return (
                   <div
                     key={qIndex}
-                    className={`p-4 rounded-lg border-2 ${
+                    className={`p-4 rounded-lg border transition-colors ${
                       isCorrect
-                        ? 'border-green-200 bg-green-50'
-                        : 'border-red-200 bg-red-50'
+                        ? 'border-primary/30 dark:border-primary-dark/30 bg-primary-muted/50 dark:bg-primary/10'
+                        : 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'
                     }`}
                   >
                     <div className="flex items-start gap-3">
                       {isCorrect ? (
-                        <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-5 h-5 text-primary dark:text-primary-dark flex-shrink-0 mt-0.5 transition-colors" />
                       ) : (
                         <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                       )}
                       <div className="flex-1">
-                        <p className="font-medium text-gray-900 mb-2 prose prose-sm max-w-none">
+                        <p className="font-medium text-neutral-900 dark:text-dark-text-primary mb-2 prose-custom transition-colors">
                           <ReactMarkdown 
                             remarkPlugins={[remarkGfm]}
                             rehypePlugins={[rehypeRaw, rehypeHighlight]}
-                            components={{
-                              code: ({node, inline, className, children, ...props}: any) => {
-                                const match = /language-(\w+)/.exec(className || '')
-                                return !inline && match ? (
-                                  <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-                                    <code className={className} {...props}>
-                                      {children}
-                                    </code>
-                                  </pre>
-                                ) : (
-                                  <code className="bg-gray-200 px-2 py-1 rounded text-sm font-mono" {...props}>
-                                    {children}
-                                  </code>
-                                )
-                              }
-                            }}
                           >
                             {question.question}
                           </ReactMarkdown>
                         </p>
-                        <p className="text-sm text-gray-600 mb-1">
+                        <p className="text-sm text-neutral-600 dark:text-dark-text-secondary mb-1 transition-colors">
                           Your answer: <span className="font-medium">{String.fromCharCode(65 + feedback.selected_answer)}. {question.options[feedback.selected_answer]}</span>
                         </p>
                         {!isCorrect && (
-                          <p className="text-sm text-gray-600 mb-2">
-                            Correct answer: <span className="font-medium text-green-700">{String.fromCharCode(65 + feedback.correct_answer)}. {question.options[feedback.correct_answer]}</span>
+                          <p className="text-sm text-neutral-600 dark:text-dark-text-secondary mb-2 transition-colors">
+                            Correct answer: <span className="font-medium text-primary dark:text-primary-dark transition-colors">{String.fromCharCode(65 + feedback.correct_answer)}. {question.options[feedback.correct_answer]}</span>
                           </p>
                         )}
                         {feedback.explanation && (
-                          <div className="mt-2 p-3 bg-white rounded border border-gray-200">
-                            <p className="text-sm text-gray-700">{feedback.explanation}</p>
+                          <div className="mt-2 p-3 bg-white dark:bg-dark-bg-secondary rounded border border-neutral-200 dark:border-dark-border-primary transition-colors">
+                            <p className="text-sm text-neutral-700 dark:text-dark-text-primary transition-colors">{feedback.explanation}</p>
                           </div>
                         )}
                       </div>
@@ -726,6 +596,7 @@ export default function Quiz() {
         currentCount={3}
         limitCount={3}
       />
+      </div>
     </div>
   )
 }

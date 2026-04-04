@@ -5,7 +5,7 @@ Quizzes API router
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import date
+from datetime import date, datetime
 
 from app.database import get_db
 from app import models, schemas
@@ -145,6 +145,16 @@ async def submit_quiz(
                 correct_answers=correct_count
             )
             db.add(quiz_result)
+            
+            # Create a progress record for quiz completion
+            quiz_progress = models.Progress(
+                goal_id=goal_id,
+                date=datetime.utcnow().date(),
+                time_spent_minutes=len(questions) * 2,  # Estimate 2 minutes per question
+                steps_completed=0
+            )
+            db.add(quiz_progress)
+            
             db.commit()
             
             # Update gamification stats and check achievements
@@ -219,37 +229,6 @@ async def get_quiz_results(
         for r in results
     ]
 
-@router.get("/{quiz_id}")
-async def get_quiz_by_id(
-    quiz_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    """Get a single quiz result with full details"""
-    # Get the quiz
-    quiz = db.query(models.QuizResult).filter(models.QuizResult.id == quiz_id).first()
-    if not quiz:
-        raise HTTPException(status_code=404, detail="Quiz not found")
-    
-    # Verify goal belongs to user
-    goal = db.query(models.Goal).filter(
-        models.Goal.id == quiz.goal_id,
-        models.Goal.user_id == current_user.id
-    ).first()
-    if not goal:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    return {
-        "id": quiz.id,
-        "goal_id": quiz.goal_id,
-        "topic": quiz.topic,
-        "score": quiz.score,
-        "total_questions": quiz.total_questions,
-        "correct_answers": quiz.correct_answers,
-        "questions": quiz.questions,
-        "completed_at": quiz.completed_at
-    }
-
 @router.get("/my-quizzes", response_model=List[dict])
 async def get_my_quizzes(
     db: Session = Depends(get_db),
@@ -275,6 +254,36 @@ async def get_my_quizzes(
         for r in results
     ]
 
+@router.get("/{quiz_id}")
+async def get_quiz_by_id(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get a single quiz result with full details for review"""
+    # Get the quiz
+    quiz = db.query(models.QuizResult).filter(models.QuizResult.id == quiz_id).first()
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    
+    # Verify goal belongs to user
+    goal = db.query(models.Goal).filter(
+        models.Goal.id == quiz.goal_id,
+        models.Goal.user_id == current_user.id
+    ).first()
+    if not goal:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return {
+        "id": quiz.id,
+        "goal_id": quiz.goal_id,
+        "topic": quiz.topic,
+        "score": quiz.score,
+        "total_questions": quiz.total_questions,
+        "correct_answers": quiz.correct_answers,
+        "questions": quiz.questions,
+        "completed_at": quiz.completed_at
+    }
 
 @router.delete("/{quiz_id}")
 async def delete_quiz(
@@ -303,4 +312,3 @@ async def delete_quiz(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete quiz: {str(e)}")
-

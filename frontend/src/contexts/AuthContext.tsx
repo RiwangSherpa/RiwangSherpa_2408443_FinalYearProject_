@@ -26,10 +26,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authApi.getMe(authToken)
       setUser(response.data)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load user:', error)
-      localStorage.removeItem('auth_token')
-      setToken(null)
+      // Only logout on authentication errors (401), not on server errors (429, 500)
+      if (error.response?.status === 401) {
+        localStorage.removeItem('auth_token')
+        setToken(null)
+        setUser(null)
+      }
+      // For other errors (429, 500), keep user logged in
     } finally {
       setLoading(false)
     }

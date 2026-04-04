@@ -5,6 +5,7 @@ Roadmaps API router
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import datetime
 
 from app.database import get_db
 from app import models, schemas
@@ -109,8 +110,27 @@ async def complete_step(
     
     try:
         step.is_completed = True
-        from datetime import datetime
         step.completed_at = datetime.utcnow()
+        
+        # Create a progress record for the study session
+        progress = models.Progress(
+            goal_id=goal.id,
+            date=datetime.utcnow().date(),
+            time_spent_minutes=15,  # Default 15 minutes for step completion
+            steps_completed=1
+        )
+        db.add(progress)
+        
+        # Update stats for roadmap step completion
+        gamification_service = GamificationService(db)
+        gamification_service.update_stats_from_activity(current_user.id, "roadmap_step")
+        
+        # Check for new achievements after step completion
+        new_achievements = gamification_service.check_and_award_achievements(current_user.id)
+        level_up_info = None
+        
+        # Get level before checking for goal completion
+        old_level = gamification_service.get_level_progress(current_user.id)["current_level"]
         
         # Check if all steps are completed, then mark goal as completed
         all_steps = db.query(models.RoadmapStep).filter(
@@ -122,31 +142,34 @@ async def complete_step(
             goal.is_completed = True
             goal.updated_at = datetime.utcnow()
             goal_completed = True
-        
-        db.commit()
-        
-        # If goal was completed, trigger gamification
-        new_achievements = []
-        level_up_info = None
-        if goal_completed:
-            gamification_service = GamificationService(db)
             
-            # Get level before
-            old_level = gamification_service.get_level_progress(current_user.id)["current_level"]
+            # Create a progress record for goal completion
+            goal_progress = models.Progress(
+                goal_id=goal.id,
+                date=datetime.utcnow().date(),
+                time_spent_minutes=30,  # Default 30 minutes for goal completion
+                steps_completed=len(all_steps)
+            )
+            db.add(goal_progress)
             
             # Update goal completed stats
             gamification_service.update_stats_from_activity(current_user.id, "goal_completed")
             
-            # Check for new achievements
-            new_achievements = gamification_service.check_and_award_achievements(current_user.id)
+            # Check for additional achievements after goal completion
+            additional_achievements = gamification_service.check_and_award_achievements(current_user.id)
+            new_achievements.extend(additional_achievements)
             
             # Check for level up
             new_level_progress = gamification_service.get_level_progress(current_user.id)
-            if new_level_progress["current_level"] > old_level:
+            new_level = new_level_progress["current_level"]
+            
+            if new_level > old_level:
                 level_up_info = {
                     "old_level": old_level,
-                    "new_level": new_level_progress["current_level"]
+                    "new_level": new_level
                 }
+        
+        db.commit()
         
         db.refresh(step)
         return {

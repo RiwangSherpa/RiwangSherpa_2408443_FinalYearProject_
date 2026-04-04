@@ -8,20 +8,20 @@ interface BadgeProps {
 
 export default function Badge({ children, variant = 'default', size = 'md' }: BadgeProps) {
   const variants = {
-    default: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
-    success: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-    warning: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
-    error: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
-    info: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+    default: 'bg-neutral-100 dark:bg-dark-bg-tertiary text-neutral-600 dark:text-dark-text-secondary',
+    success: 'bg-primary-muted dark:bg-primary/20 text-primary dark:text-primary-dark',
+    warning: 'bg-tertiary-light dark:bg-tertiary/20 text-amber-700 dark:text-amber-400',
+    error: 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400',
+    info: 'bg-secondary-light dark:bg-secondary/20 text-secondary dark:text-secondary-dark'
   }
 
   const sizes = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-1 text-sm'
+    sm: 'px-2.5 py-0.5 text-xs',
+    md: 'px-3 py-1 text-sm'
   }
 
   return (
-    <span className={`inline-flex items-center rounded-full font-medium ${variants[variant]} ${sizes[size]}`}>
+    <span className={`inline-flex items-center rounded-pill font-semibold transition-colors duration-300 ${variants[variant]} ${sizes[size]}`}>
       {children}
     </span>
   )

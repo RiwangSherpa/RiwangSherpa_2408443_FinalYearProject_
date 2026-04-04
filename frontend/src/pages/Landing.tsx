@@ -72,17 +72,9 @@ export default function Landing() {
   ]
 
   return (
-    <div className={`min-h-screen transition-colors duration-200 ${
-      theme === 'dark' 
-        ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
-        : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'
-    }`}>
+    <div className="min-h-screen bg-neutral-50">
       {/* Navigation */}
-      <nav className={`sticky top-0 z-50 backdrop-blur-md border-b shadow-sm transition-colors ${
-        theme === 'dark' 
-          ? 'bg-gray-900/80 border-gray-700' 
-          : 'bg-white/80 border-gray-200'
-      }`}>
+      <nav className="sticky top-0 z-50 border-b border-neutral-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Logo size="md" />

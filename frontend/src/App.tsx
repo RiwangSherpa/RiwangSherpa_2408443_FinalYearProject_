@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { DataProvider } from './contexts/DataContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import Landing from './pages/Landing'
@@ -13,6 +14,7 @@ import Home from './pages/Home'
 import Goals from './pages/Goals'
 import StudyRoadmap from './pages/StudyRoadmap'
 import Quiz from './pages/Quiz'
+import QuizReview from './pages/QuizReview'
 import Productivity from './pages/Productivity'
 import Settings from './pages/Settings'
 import Subscription from './pages/Subscription'
@@ -28,7 +30,7 @@ function DefaultRoute() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     )
   }
@@ -44,7 +46,8 @@ function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <Router>
+        <DataProvider>
+          <Router>
       <Routes>
         {/* Public routes */}
         <Route path="/landing" element={<Landing />} />
@@ -70,6 +73,7 @@ function App() {
                   <Route path="/roadmaps/:goalId" element={<StudyRoadmap />} />
                   <Route path="/quiz" element={<Quiz />} />
                   <Route path="/quiz/:goalId" element={<Quiz />} />
+                  <Route path="/quiz/review/:quizId" element={<QuizReview />} />
                   <Route path="/productivity" element={<Productivity />} />
                   <Route path="/subscription" element={<Subscription />} />
                   <Route path="/settings" element={<Settings />} />
@@ -84,6 +88,7 @@ function App() {
         />
       </Routes>
     </Router>
+        </DataProvider>
       </ThemeProvider>
     </AuthProvider>
   )

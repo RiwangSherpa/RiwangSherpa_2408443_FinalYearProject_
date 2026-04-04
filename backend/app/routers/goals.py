@@ -35,13 +35,16 @@ async def create_goal(
             )
     
     try:
+        print(f"[Backend] Creating goal for user {current_user.id}: {goal.model_dump()}")
         db_goal = models.Goal(**goal.model_dump(), user_id=current_user.id)
         db.add(db_goal)
         db.commit()
         db.refresh(db_goal)
+        print(f"[Backend] Goal created successfully: ID {db_goal.id}")
         return db_goal
     except Exception as e:
         db.rollback()
+        print(f"[Backend] Failed to create goal: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to create goal: {str(e)}")
 
 @router.get("/", response_model=List[schemas.GoalResponse])
@@ -52,10 +55,38 @@ async def get_goals(
     current_user: models.User = Depends(get_current_user)
 ):
     """Get all goals for current user"""
+    print(f"[Backend] Fetching goals for user {current_user.id}")
     goals = db.query(models.Goal).filter(
         models.Goal.user_id == current_user.id
     ).offset(skip).limit(limit).all()
+    print(f"[Backend] Found {len(goals)} goals")
     return goals
+
+@router.get("/with-roadmaps", response_model=List[schemas.GoalWithRoadmapResponse])
+async def get_goals_with_roadmaps(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get all goals for current user with their roadmaps in single call"""
+    goals = db.query(models.Goal).filter(
+        models.Goal.user_id == current_user.id
+    ).offset(skip).limit(limit).all()
+    
+    result = []
+    for goal in goals:
+        # Get roadmap steps for this goal
+        steps = db.query(models.RoadmapStep).filter(
+            models.RoadmapStep.goal_id == goal.id
+        ).order_by(models.RoadmapStep.step_number).all()
+        
+        result.append({
+            "goal": goal,
+            "roadmap": steps
+        })
+    
+    return result
 
 @router.get("/{goal_id}", response_model=schemas.GoalResponse)
 async def get_goal(

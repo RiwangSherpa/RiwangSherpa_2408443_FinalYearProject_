@@ -9,38 +9,72 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          DEFAULT: '#064E3B',
+          light:   '#065F46',
+          muted:   '#D1FAE5',
+          dark:    '#10B981', // Dark mode primary
         },
-        accent: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
+        secondary: {
+          DEFAULT: '#4F46E5',
+          light:   '#EEF2FF',
+          muted:   '#C7D2FE',
+          dark:    '#6366F1', // Dark mode secondary
         },
+        tertiary: {
+          DEFAULT: '#F59E0B',
+          light:   '#FEF3C7',
+          muted:   '#FDE68A',
+          dark:    '#F59E0B', // Same tertiary works in both modes
+        },
+        neutral: {
+          50:  '#FAFAF8',
+          100: '#F3F4F6',
+          200: '#E5E7EB',
+          300: '#D1D5DB',
+          400: '#9CA3AF',
+          500: '#6B7280',
+          600: '#4B5563',
+          700: '#374151',
+          800: '#1F2937',
+          900: '#111827',
+          950: '#030712', // Extra dark for backgrounds
+        },
+        // Dark mode specific colors
+        dark: {
+          bg: {
+            primary: '#030712',   // Main background
+            secondary: '#111827',  // Card backgrounds
+            tertiary: '#1F2937',   // Elevated surfaces
+          },
+          text: {
+            primary: '#F9FAFB',    // Main text
+            secondary: '#D1D5DB',  // Secondary text
+            tertiary: '#9CA3AF',   // Muted text
+            inverse: '#111827',    // Text on light backgrounds
+          },
+          border: {
+            primary: '#374151',    // Main borders
+            secondary: '#4B5563',  // Subtle borders
+            tertiary: '#6B7280',   // Very subtle borders
+          },
+          hover: {
+            primary: '#1F2937',    // Hover state for primary
+            secondary: '#374151',  // Hover state for secondary
+          },
+        }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['"Plus Jakarta Sans"', 'sans-serif'],
+        body:    ['Inter', 'sans-serif'],
       },
-      animation: {
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      borderRadius: {
+        card: '12px',
+        pill: '9999px',
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 }
 

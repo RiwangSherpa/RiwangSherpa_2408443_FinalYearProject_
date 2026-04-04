@@ -73,28 +73,20 @@ export default function ForgotPassword() {
 
   if (success) {
     return (
-      <div className={`min-h-screen flex items-center justify-center px-4 transition-colors duration-200 ${
-        theme === 'dark' 
-          ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
-          : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'
-      }`}>
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-dark-bg-primary px-4 transition-colors duration-300">
         <div className="max-w-md w-full">
-          <div className={`rounded-2xl shadow-xl p-8 text-center transition-colors ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-          }`}>
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-              <CheckCircle className="w-8 h-8 text-green-600" />
+          <div className="bg-white dark:bg-dark-bg-secondary rounded-card border border-neutral-200 dark:border-dark-border-primary p-8 text-center transition-colors duration-300">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-muted dark:bg-primary/20 rounded-full mb-4 transition-colors">
+              <CheckCircle className="w-8 h-8 text-primary dark:text-primary-dark transition-colors" />
             </div>
-            <h2 className={`text-2xl font-bold mb-2 ${
-              theme === 'dark' ? 'text-white' : 'text-gray-900'
-            }`}>Check your email</h2>
-            <p className={theme === 'dark' ? 'text-gray-300 mb-6' : 'text-gray-600 mb-6'}>
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-dark-text-primary mb-2 font-heading transition-colors">Check your email</h2>
+            <p className="text-neutral-600 dark:text-dark-text-secondary mb-6 transition-colors">
               If an account with {email} exists, we've sent password reset instructions.
             </p>
             
             <Link
               to="/login"
-              className="text-blue-600 hover:text-blue-700 font-semibold"
+              className="text-primary hover:text-primary-light font-semibold"
             >
               Back to login
             </Link>
@@ -105,27 +97,17 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center px-4 transition-colors duration-200 ${
-      theme === 'dark' 
-        ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
-        : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'
-    }`}>
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-dark-bg-primary px-4 transition-colors duration-300">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
-            <BookOpen className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary dark:bg-primary-dark rounded-2xl mb-4 transition-colors">
+            <BookOpen className="w-8 h-8 text-white transition-colors" />
           </div>
-          <h1 className={`text-3xl font-bold ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>Forgot Password</h1>
-          <p className={`mt-2 ${
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-          }`}>Enter your email to reset your password</p>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-dark-text-primary font-heading transition-colors">Forgot Password</h1>
+          <p className="mt-2 text-neutral-600 dark:text-dark-text-secondary transition-colors">Enter your email to reset your password</p>
         </div>
 
-        <div className={`rounded-2xl shadow-xl p-8 transition-colors ${
-          theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-        }`}>
+        <div className="bg-white dark:bg-dark-bg-secondary rounded-card border border-neutral-200 dark:border-dark-border-primary p-8 transition-colors duration-300">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
@@ -134,9 +116,7 @@ export default function ForgotPassword() {
             )}
 
             <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-              }`}>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-dark-text-primary mb-2 transition-colors">
                 Email
               </label>
               <input
@@ -144,11 +124,7 @@ export default function ForgotPassword() {
                 required
                 value={email}
                 onChange={handleEmailChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                }`}
+                className="input-base"
                 placeholder="you@example.com"
               />
             </div>
@@ -158,15 +134,15 @@ export default function ForgotPassword() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-md bg-amber-50 dark:bg-amber-900/20 p-4"
+                className="rounded-md bg-tertiary-light p-4"
               >
                 <div className="flex">
-                  <AlertCircle className="h-5 w-5 text-amber-400 dark:text-amber-500" />
+                  <AlertCircle className="h-5 w-5 text-tertiary" />
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    <h3 className="text-sm font-medium text-tertiary">
                       Google Sign-In Account
                     </h3>
-                    <div className="mt-2 text-sm text-amber-700 dark:text-amber-400">
+                    <div className="mt-2 text-sm text-tertiary">
                       <p>
                         This account uses Google Sign-In. You cannot reset the password here.
                       </p>
@@ -189,7 +165,7 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 disabled={loading || checkingAccount}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -206,7 +182,7 @@ export default function ForgotPassword() {
           <div className="mt-6 text-center">
             <Link
               to="/login"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="text-sm text-primary hover:text-primary-light font-medium"
             >
               Back to login
             </Link>

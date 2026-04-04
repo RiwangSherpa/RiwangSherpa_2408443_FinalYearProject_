@@ -211,25 +211,25 @@ export default function Tutor() {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-indigo-950/20">
+    <div className="h-[calc(100vh-4rem)] flex bg-neutral-50 dark:bg-dark-bg-primary transition-colors duration-300">
       {/* Sidebar - Sessions */}
-      <div className="w-80 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 flex flex-col shadow-lg shadow-gray-200/50 dark:shadow-none">
-        <div className="p-5 border-b border-gray-200/50 dark:border-gray-700/50">
+      <div className="w-80 bg-white dark:bg-dark-bg-secondary border-r border-neutral-200 dark:border-dark-border-primary flex flex-col transition-colors duration-300">
+        <div className="p-5 border-b border-neutral-200 dark:border-dark-border-primary transition-colors">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-500/25">
+              <div className="p-2.5 bg-primary dark:bg-primary-dark rounded-xl transition-colors">
                 <Bot className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">AI Tutor</h2>
+              <h2 className="text-xl font-bold text-primary dark:text-primary-dark font-heading transition-colors">AI Tutor</h2>
             </div>
             <button
               onClick={() => setShowNewSessionModal(true)}
-              className="p-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all hover:scale-105"
+              className="p-2.5 bg-primary dark:bg-primary-dark text-white rounded-xl hover:bg-primary-light dark:hover:bg-primary/90 transition-colors"
             >
               <Plus className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-neutral-500 dark:text-dark-text-secondary transition-colors">
             {sessions.filter(s => s.is_active).length} active conversation{sessions.filter(s => s.is_active).length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -237,11 +237,11 @@ export default function Tutor() {
         <div className="flex-1 overflow-y-auto">
           {sessions.length === 0 ? (
             <div className="p-8 text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="w-8 h-8 text-indigo-500" />
+              <div className="w-16 h-16 bg-primary-muted dark:bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-colors">
+                <Sparkles className="w-8 h-8 text-primary dark:text-primary-dark transition-colors" />
               </div>
-              <p className="text-gray-600 dark:text-gray-300 font-medium">No conversations yet</p>
-              <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">Start a new session to get help</p>
+              <p className="text-neutral-600 dark:text-dark-text-secondary font-medium transition-colors">No conversations yet</p>
+              <p className="text-neutral-400 dark:text-dark-text-tertiary text-sm mt-1 transition-colors">Start a new session to get help</p>
             </div>
           ) : (
             <div className="p-3 space-y-2">
@@ -249,30 +249,30 @@ export default function Tutor() {
                 <button
                   key={session.id}
                   onClick={() => selectSession(session)}
-                  className={`w-full p-4 rounded-2xl text-left transition-all ${
+                  className={`w-full p-4 rounded-xl text-left transition-colors ${
                     activeSession?.id === session.id
-                      ? 'bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 border border-indigo-200 dark:border-indigo-800 shadow-sm'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      ? 'bg-primary-muted dark:bg-primary/20 border border-primary dark:border-primary-dark'
+                      : 'hover:bg-neutral-50 dark:hover:bg-dark-hover-primary'
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <p className={`font-semibold truncate ${
+                      <p className={`font-semibold truncate transition-colors ${
                         activeSession?.id === session.id
-                          ? 'text-indigo-900 dark:text-indigo-100'
-                          : 'text-gray-900 dark:text-white'
+                          ? 'text-primary dark:text-primary-dark'
+                          : 'text-neutral-900 dark:text-dark-text-primary'
                       }`}>
                         {session.title || 'Untitled Session'}
                       </p>
-                      <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
+                      <div className="flex items-center gap-2 mt-1.5 text-xs text-neutral-500 dark:text-dark-text-tertiary transition-colors">
                         <MessageSquare className="w-3.5 h-3.5" />
                         <span>{session.message_count} message{session.message_count !== 1 ? 's' : ''}</span>
-                        <span className="text-gray-300">•</span>
+                        <span className="text-neutral-300 dark:text-dark-text-tertiary">•</span>
                         <span>{formatDate(session.updated_at)}</span>
                       </div>
                     </div>
                     {session.is_active && (
-                      <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full mt-1.5 shadow-sm shadow-emerald-500/50"></div>
+                      <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full mt-1.5"></div>
                     )}
                   </div>
                 </button>
@@ -283,7 +283,7 @@ export default function Tutor() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm">
+      <div className="flex-1 flex flex-col bg-white dark:bg-dark-bg-secondary transition-colors duration-300">
         {!activeSession ? (
           <div className="flex-1 flex items-center justify-center p-8">
             <motion.div 
@@ -291,18 +291,18 @@ export default function Tutor() {
               animate={{ opacity: 1, scale: 1 }}
               className="text-center max-w-md"
             >
-              <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-500/30">
+              <div className="w-24 h-24 bg-primary dark:bg-primary-dark rounded-3xl flex items-center justify-center mx-auto mb-6 transition-colors">
                 <Bot className="w-12 h-12 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+              <h3 className="text-2xl font-bold text-neutral-900 dark:text-dark-text-primary mb-3 font-heading transition-colors">
                 Your AI Study Companion
               </h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
+              <p className="text-neutral-500 dark:text-dark-text-secondary mb-8 leading-relaxed transition-colors">
                 Get personalized help with concepts, ask questions, and learn at your own pace with AI-powered tutoring.
               </p>
               <button
                 onClick={() => setShowNewSessionModal(true)}
-                className="px-8 py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-semibold shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all hover:scale-105"
+                className="px-8 py-4 bg-primary dark:bg-primary-dark text-white rounded-2xl font-semibold hover:bg-primary-light dark:hover:bg-primary/90 transition-colors"
               >
                 Start New Session
               </button>
@@ -311,16 +311,16 @@ export default function Tutor() {
         ) : (
           <>
             {/* Chat Header */}
-            <div className="p-5 border-b border-gray-200/50 dark:border-gray-700/50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl flex items-center justify-between">
+            <div className="p-5 border-b border-neutral-200 dark:border-dark-border-primary bg-white dark:bg-dark-bg-secondary flex items-center justify-between transition-colors">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <div className="w-10 h-10 bg-primary dark:bg-primary-dark rounded-xl flex items-center justify-center transition-colors">
                   <Bot className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                  <h3 className="font-semibold text-neutral-900 dark:text-dark-text-primary transition-colors">
                     {activeSession.title || 'Untitled Session'}
                   </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-neutral-500 dark:text-dark-text-secondary transition-colors">
                     {activeSession.is_active ? (
                       <span className="flex items-center gap-1.5">
                         <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
@@ -334,7 +334,7 @@ export default function Tutor() {
                 {activeSession.is_active && (
                   <button
                     onClick={() => closeSession(activeSession.id)}
-                    className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 rounded-xl transition-colors"
+                    className="px-4 py-2 text-sm text-neutral-600 dark:text-dark-text-secondary hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-xl transition-colors"
                   >
                     End Session
                   </button>
@@ -351,10 +351,10 @@ export default function Tutor() {
                     animate={{ opacity: 1 }}
                     className="text-center py-12"
                   >
-                    <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <MessageSquare className="w-8 h-8 text-indigo-400" />
+                    <div className="w-16 h-16 bg-primary-muted dark:bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-colors">
+                      <MessageSquare className="w-8 h-8 text-primary dark:text-primary-dark transition-colors" />
                     </div>
-                    <p className="text-gray-500 dark:text-gray-400">
+                    <p className="text-neutral-500 dark:text-dark-text-secondary transition-colors">
                       Start the conversation by sending a message below
                     </p>
                   </motion.div>
@@ -369,25 +369,25 @@ export default function Tutor() {
                   >
                     <div className={`max-w-[85%] sm:max-w-[75%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
                       <div
-                        className={`p-5 rounded-2xl shadow-sm ${
+                        className={`p-5 rounded-2xl transition-colors ${
                           message.role === 'user'
-                            ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-br-md'
-                            : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white rounded-bl-md'
+                            ? 'bg-primary dark:bg-primary-dark text-white rounded-br-md'
+                            : 'bg-neutral-50 dark:bg-dark-bg-tertiary border border-neutral-200 dark:border-dark-border-primary text-neutral-900 dark:text-dark-text-primary rounded-bl-md'
                         }`}
                       >
                         <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
                       </div>
                       
                       <div className={`flex items-center gap-3 mt-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <span className="text-xs text-gray-400">{formatTime(message.created_at)}</span>
+                        <span className="text-xs text-neutral-400 dark:text-dark-text-tertiary transition-colors">{formatTime(message.created_at)}</span>
                         {message.role === 'assistant' && (
-                          <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm border border-gray-100 dark:border-gray-700">
+                          <div className="flex items-center gap-1 bg-white dark:bg-dark-bg-tertiary rounded-lg p-1 border border-neutral-200 dark:border-dark-border-primary transition-colors">
                             <button
                               onClick={() => rateMessage(message.id, true)}
                               className={`p-1.5 rounded transition-colors ${
                                 message.was_helpful === true
                                   ? 'text-green-500 bg-green-50 dark:bg-green-900/20'
-                                  : 'text-gray-400 hover:text-green-500 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                  : 'text-neutral-400 dark:text-dark-text-tertiary hover:text-green-500 hover:bg-neutral-50 dark:hover:bg-green-900/20'
                               }`}
                             >
                               <ThumbsUp className="w-4 h-4" />
@@ -397,7 +397,7 @@ export default function Tutor() {
                               className={`p-1.5 rounded transition-colors ${
                                 message.was_helpful === false
                                   ? 'text-red-500 bg-red-50 dark:bg-red-900/20'
-                                  : 'text-gray-400 hover:text-red-500 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                  : 'text-neutral-400 dark:text-dark-text-tertiary hover:text-red-500 hover:bg-neutral-50 dark:hover:bg-red-900/20'
                               }`}
                             >
                               <ThumbsDown className="w-4 h-4" />
@@ -416,12 +416,12 @@ export default function Tutor() {
                   animate={{ opacity: 1 }}
                   className="flex justify-start"
                 >
-                  <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm">
+                  <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                         <Loader2 className="w-4 h-4 text-white animate-spin" />
                       </div>
-                      <span className="text-sm text-gray-500">AI is thinking...</span>
+                      <span className="text-sm text-neutral-500">AI is thinking...</span>
                     </div>
                   </div>
                 </motion.div>
@@ -430,7 +430,7 @@ export default function Tutor() {
             </div>
 
             {/* Input Area */}
-            <div className="p-5 border-t border-gray-200/50 dark:border-gray-700/50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl">
+            <div className="p-5 border-t border-neutral-200 dark:border-dark-border-primary bg-white dark:bg-dark-bg-secondary transition-colors">
               <div className="flex items-end gap-3 max-w-4xl mx-auto">
                 <div className="flex-1 relative">
                   <textarea
@@ -440,19 +440,19 @@ export default function Tutor() {
                     onKeyDown={handleKeyDown}
                     placeholder="Ask anything about your studies..."
                     rows={1}
-                    className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none dark:text-white outline-none transition-all"
+                    className="w-full px-5 py-4 bg-neutral-50 dark:bg-dark-bg-tertiary border border-neutral-200 dark:border-dark-border-primary rounded-2xl focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark focus:border-transparent resize-none outline-none transition-all"
                     style={{ minHeight: '56px', maxHeight: '150px' }}
                   />
                 </div>
                 <button
                   onClick={sendMessage}
                   disabled={!inputMessage.trim() || isLoading}
-                  className="px-5 py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-semibold shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+                  className="px-5 py-4 bg-primary dark:bg-primary-dark text-white rounded-2xl font-semibold hover:bg-primary-light dark:hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-xs text-gray-400 mt-3 text-center">
+              <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary mt-3 text-center transition-colors">
                 Press Enter to send • Shift + Enter for new line
               </p>
             </div>
@@ -462,41 +462,41 @@ export default function Tutor() {
 
       {/* New Session Modal */}
       {showNewSessionModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 p-4 transition-colors">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-md w-full shadow-2xl"
+            className="bg-white dark:bg-dark-bg-secondary rounded-card p-8 max-w-md w-full border border-neutral-200 dark:border-dark-border-primary transition-colors"
           >
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-500/25">
+              <div className="p-2 bg-primary dark:bg-primary-dark rounded-xl transition-colors">
                 <Bot className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">New Session</h2>
+              <h2 className="text-2xl font-bold text-neutral-900 dark:text-dark-text-primary font-heading transition-colors">New Session</h2>
             </div>
             
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-neutral-700 dark:text-dark-text-primary mb-2 transition-colors">
                   Session Title
                 </label>
                 <input
                   type="text"
                   value={newSessionTitle}
                   onChange={(e) => setNewSessionTitle(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none transition-all"
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-dark-bg-tertiary border border-neutral-200 dark:border-dark-border-primary rounded-xl focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark outline-none transition-all"
                   placeholder="e.g., Help with Calculus Derivatives"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-neutral-700 dark:text-dark-text-primary mb-2 transition-colors">
                   Link to Goal (Optional)
                 </label>
                 <select
                   value={selectedGoalId || ''}
                   onChange={(e) => setSelectedGoalId(e.target.value ? Number(e.target.value) : undefined)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none transition-all"
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-dark-bg-tertiary border border-neutral-200 dark:border-dark-border-primary rounded-xl focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark outline-none transition-all"
                 >
                   <option value="">None</option>
                   {goals.map((goal) => (
@@ -509,14 +509,14 @@ export default function Tutor() {
             <div className="flex gap-3 mt-8">
               <button
                 onClick={() => setShowNewSessionModal(false)}
-                className="flex-1 py-3.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="flex-1 py-3.5 border border-neutral-300 dark:border-dark-border-primary text-neutral-700 dark:text-dark-text-primary rounded-xl font-semibold hover:bg-neutral-50 dark:hover:bg-dark-hover-primary transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={createNewSession}
                 disabled={!newSessionTitle.trim() || isCreating}
-                className="flex-1 py-3.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all disabled:opacity-50"
+                className="flex-1 py-3.5 bg-primary dark:bg-primary-dark text-white rounded-xl font-semibold hover:bg-primary-light dark:hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {isCreating ? (
                   <span className="flex items-center justify-center gap-2">

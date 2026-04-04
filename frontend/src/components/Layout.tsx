@@ -14,6 +14,7 @@ import {
   X,
   ChevronDown,
   Crown,
+  Flame,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { progressApi } from '../lib/api'
@@ -69,11 +70,11 @@ export default function Layout({ children }: LayoutProps) {
   const isPro = user?.subscription_plan !== 'free'
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen bg-neutral-50 dark:bg-dark-bg-primary transition-colors duration-300">
       {/* Top Navigation Bar */}
-      <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 shadow-sm transition-colors">
+      <nav className="sticky top-0 z-50 bg-neutral-50 dark:bg-dark-bg-primary border-b border-neutral-200 dark:border-dark-border-primary transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-14">
             {/* Left: Logo */}
             <div className="flex items-center">
               <Logo size="lg" />
@@ -81,7 +82,7 @@ export default function Layout({ children }: LayoutProps) {
 
             {/* Center: Navigation (Desktop) */}
             <div className="hidden lg:flex items-center justify-center flex-1">
-              <div className="flex items-center bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-1.5 space-x-1">
+              <div className="flex items-center gap-1">
                 {navigation.map((item: { name: string; href: string; icon: React.ElementType }) => {
                   const active = location.pathname === item.href
                   return (
@@ -89,10 +90,10 @@ export default function Layout({ children }: LayoutProps) {
                       key={item.name}
                       to={item.href}
                       className={`
-                        flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                        flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150
                         ${active
-                          ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50'
+                          ? 'text-primary dark:text-primary-dark border-b-2 border-primary dark:border-primary-dark'
+                          : 'text-neutral-500 dark:text-dark-text-secondary hover:text-neutral-900 dark:hover:text-dark-text-primary'
                         }
                       `}
                     >
@@ -108,10 +109,10 @@ export default function Layout({ children }: LayoutProps) {
                     onClick={() => setMoreMenuOpen(!moreMenuOpen)}
                     onBlur={() => setTimeout(() => setMoreMenuOpen(false), 200)}
                     className={`
-                      flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                      flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150
                       ${moreMenuOpen
-                        ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50'
+                        ? 'text-primary dark:text-primary-dark'
+                        : 'text-neutral-500 dark:text-dark-text-secondary hover:text-neutral-900 dark:hover:text-dark-text-primary'
                       }
                     `}
                   >
@@ -120,7 +121,7 @@ export default function Layout({ children }: LayoutProps) {
                   </button>
                   
                   {moreMenuOpen && (
-                    <div className="absolute top-full mt-2 right-0 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
+                    <div className="absolute top-full mt-2 right-0 w-56 bg-white dark:bg-dark-bg-secondary border border-neutral-200 dark:border-dark-border-primary rounded-card py-2 z-50 transition-colors">
                       {moreNavigation.map((item: { name: string; href: string; icon: React.ElementType; badge?: string }) => {
                         const active = location.pathname === item.href
                         const Icon = item.icon
@@ -129,17 +130,17 @@ export default function Layout({ children }: LayoutProps) {
                             key={item.name}
                             to={item.href}
                             className={`
-                              flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all
+                              flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors
                               ${active
-                                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                ? 'bg-primary-muted text-primary dark:bg-primary/20 dark:text-primary-dark'
+                                : 'text-neutral-600 dark:text-dark-text-secondary hover:bg-neutral-100 dark:hover:bg-dark-hover-primary'
                               }
                             `}
                           >
                             <Icon className="w-4 h-4" />
                             <span className="flex-1">{item.name}</span>
                             {item.badge && (
-                              <span className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded">
+                              <span className="px-1.5 py-0.5 text-xs bg-secondary-light dark:bg-secondary/20 text-secondary dark:text-secondary-dark rounded">
                                 {item.badge}
                               </span>
                             )}
@@ -153,49 +154,47 @@ export default function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Right: User Info & Actions */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {/* Pro Badge / Upgrade Button */}
               <Link
                 to="/subscription"
-                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-pill text-xs font-semibold transition-colors ${
                   isPro
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-primary dark:bg-primary-dark text-white hover:bg-primary-light dark:hover:bg-primary/90'
+                    : 'bg-neutral-100 dark:bg-dark-bg-tertiary text-neutral-600 dark:text-dark-text-secondary hover:bg-neutral-200 dark:hover:bg-dark-hover-primary'
                 }`}
               >
-                {isPro && <Crown className="w-4 h-4" />}
-                <span className="text-sm font-medium">
-                  {isPro ? 'Pro' : 'Upgrade'}
-                </span>
+                {isPro && <Crown className="w-3 h-3" />}
+                <span>{isPro ? 'PRO' : 'Upgrade'}</span>
               </Link>
 
               {/* User Menu */}
               <div className="relative group">
                 <button 
                   onClick={() => navigate('/profile')}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-hover-primary transition-colors"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                  <div className="w-8 h-8 rounded-full bg-neutral-800 dark:bg-dark-text-primary text-white dark:text-dark-bg-primary text-xs font-semibold flex items-center justify-center transition-colors">
                     {user?.email.charAt(0).toUpperCase() || 'U'}
                   </div>
-                  <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <span className="hidden sm:block text-sm font-medium text-neutral-800 dark:text-dark-text-primary transition-colors">
                     {user?.full_name || user?.email.split('@')[0]}
                   </span>
                 </button>
 
                 {/* Dropdown Menu */}
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-bg-secondary rounded-card border border-neutral-200 dark:border-dark-border-primary opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                   <div className="py-1">
                     <Link
                       to="/settings"
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 dark:text-dark-text-primary hover:bg-neutral-100 dark:hover:bg-dark-hover-primary transition-colors"
                     >
                       <User className="w-4 h-4" />
                       Settings
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
                       Logout
@@ -207,7 +206,7 @@ export default function Layout({ children }: LayoutProps) {
               {/* Mobile Menu Button */}
               <button
                       onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                      className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="md:hidden p-2 rounded-lg text-neutral-600 dark:text-dark-text-secondary hover:bg-neutral-100 dark:hover:bg-dark-hover-primary transition-colors"
                     >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -222,10 +221,10 @@ export default function Layout({ children }: LayoutProps) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+              className="md:hidden border-t border-neutral-200 dark:border-dark-border-primary bg-white dark:bg-dark-bg-secondary transition-colors"
             >
               <div className="px-4 py-3 space-y-1">
-                <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Main</p>
+                <p className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-400 dark:text-dark-text-tertiary">Main</p>
                 {navigation.map((item) => {
                   const active = location.pathname === item.href
                   return (
@@ -234,10 +233,10 @@ export default function Layout({ children }: LayoutProps) {
                       to={item.href}
                       onClick={() => setMobileMenuOpen(false)}
                       className={`
-                        flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all
+                        flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors
                         ${active
-                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
-                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          ? 'bg-primary dark:bg-primary-dark text-white'
+                          : 'text-neutral-600 dark:text-dark-text-secondary hover:bg-neutral-100 dark:hover:bg-dark-hover-primary'
                         }
                       `}
                     >
@@ -246,7 +245,7 @@ export default function Layout({ children }: LayoutProps) {
                     </Link>
                   )
                 })}
-                <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mt-4">More</p>
+                <p className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-400 dark:text-dark-text-tertiary mt-4">More</p>
                 {moreNavigation.map((item: { name: string; href: string; icon: React.ElementType }) => {
                   const active = location.pathname === item.href
                   const Icon = item.icon
@@ -256,10 +255,10 @@ export default function Layout({ children }: LayoutProps) {
                       to={item.href}
                       onClick={() => setMobileMenuOpen(false)}
                       className={`
-                        flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all
+                        flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors
                         ${active
-                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
-                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          ? 'bg-primary dark:bg-primary-dark text-white'
+                          : 'text-neutral-600 dark:text-dark-text-secondary hover:bg-neutral-100 dark:hover:bg-dark-hover-primary'
                         }
                       `}
                     >
@@ -269,11 +268,11 @@ export default function Layout({ children }: LayoutProps) {
                   )
                 })}
                 {/* Mobile Streak */}
-                <div className="flex items-center gap-2 px-4 py-3 mt-2 bg-orange-50 rounded-lg border border-orange-200">
-                  <span className="text-xl">🔥</span>
+                <div className="flex items-center gap-2 px-4 py-3 mt-2 bg-tertiary-light dark:bg-dark-bg-tertiary rounded-card border border-tertiary-muted dark:border-dark-border-secondary transition-colors">
+                  <Flame className="w-5 h-5 text-tertiary" />
                   <div>
-                    <p className="text-xs text-orange-600">Study Streak</p>
-                    <p className="text-sm font-bold text-orange-700">{streak} days</p>
+                    <p className="text-xs text-tertiary font-medium">Study Streak</p>
+                    <p className="text-sm font-bold text-neutral-800 dark:text-dark-text-primary">{streak} days</p>
                   </div>
                 </div>
               </div>

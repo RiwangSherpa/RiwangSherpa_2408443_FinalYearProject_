@@ -11,11 +11,11 @@ interface CardProps {
 export default function Card({ children, className = '', hover = false, onClick }: CardProps) {
   return (
     <motion.div
-      whileHover={hover ? { y: -2 } : {}}
+      whileHover={hover ? { borderColor: '#064E3B' } : {}}
       className={`
-        bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6
-        transition-all duration-200
-        ${hover ? 'hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer' : ''}
+        bg-white dark:bg-dark-bg-secondary border border-neutral-200 dark:border-dark-border-primary rounded-card p-6
+        transition-colors duration-150
+        ${hover ? 'hover:border-primary dark:hover:border-primary-dark cursor-pointer' : ''}
         ${onClick ? 'cursor-pointer' : ''}
         ${className}
       `}

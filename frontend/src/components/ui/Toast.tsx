@@ -32,10 +32,10 @@ function ToastItem({ toast, onRemove }: ToastProps) {
   }
 
   const colors = {
-    success: 'bg-green-50 border-green-200 text-green-800',
-    error: 'bg-red-50 border-red-200 text-red-800',
-    warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-    info: 'bg-blue-50 border-blue-200 text-blue-800'
+    success: 'bg-primary-muted border-primary text-primary',
+    error: 'bg-red-50 border-red-200 text-red-700',
+    warning: 'bg-tertiary-light border-tertiary text-tertiary',
+    info: 'bg-secondary-light border-secondary text-secondary'
   }
 
   const Icon = icons[toast.type]
@@ -45,7 +45,7 @@ function ToastItem({ toast, onRemove }: ToastProps) {
       initial={{ opacity: 0, y: -20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-      className={`flex items-center gap-3 p-4 rounded-lg border ${colors[toast.type]} shadow-lg min-w-[300px] max-w-md`}
+      className={`flex items-center gap-3 p-4 rounded-lg border ${colors[toast.type]} min-w-[300px] max-w-md`}
     >
       <Icon className="w-5 h-5 flex-shrink-0" />
       <p className="flex-1 text-sm font-medium">{toast.message}</p>

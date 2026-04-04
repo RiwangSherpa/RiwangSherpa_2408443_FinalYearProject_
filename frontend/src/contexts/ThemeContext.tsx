@@ -29,12 +29,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Initialize theme from localStorage first for quick paint,
-  // then override with backend settings if authenticated.
+  // Initialize theme from system preference first, then localStorage, then backend
   useEffect(() => {
-    const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null
-    // Default to light mode, only use dark mode if explicitly set
-    const initial: Theme = stored === 'dark' ? 'dark' : 'light'
+    const getInitialTheme = (): Theme => {
+      // Check system preference first
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null
+        // Only use system preference if user hasn't explicitly set a preference
+        if (!stored) return 'dark'
+      }
+      
+      // Fall back to localStorage preference
+      const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null
+      // Default to light mode, only use dark mode if explicitly set
+      return stored === 'dark' ? 'dark' : 'light'
+    }
+    
+    const initial = getInitialTheme()
     setThemeState(initial)
     applyThemeClass(initial)
     setIsInitialized(true)

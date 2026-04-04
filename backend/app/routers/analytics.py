@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from app.database import get_db
 from app import models, schemas
 from app.dependencies import get_current_user
+from app.services.gamification import GamificationService
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,15 @@ class StrengthsWeaknessesData(BaseModel):
     weak_topics: List[Dict[str, Any]]
     suggestions: List[str]
 
+class ActivityData(BaseModel):
+    id: str
+    type: str  # 'goal_completed', 'goal_progress', 'quiz_attempt', 'level_up', 'study_session'
+    title: str
+    description: str
+    timestamp: str
+    goal_title: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
 class OverviewAnalytics(BaseModel):
     total_study_time_hours: float
     study_time_last_7_days: List[StudyTimeData]
@@ -69,6 +79,7 @@ class OverviewAnalytics(BaseModel):
     streak_data: StreakData
     completed_roadmap_steps: int
     active_goal_progress: Optional[GoalProgressData]
+    quiz_stats: Optional[QuizAnalyticsData] = None
 
 class CurrentGoalAnalytics(BaseModel):
     goal: GoalProgressData
@@ -320,6 +331,101 @@ def get_strengths_weaknesses(db: Session, user_id: int) -> StrengthsWeaknessesDa
         suggestions=suggestions
     )
 
+def get_user_activity(db: Session, user_id: int, limit: int = 10) -> List[ActivityData]:
+    """Get recent user activity for dashboard"""
+    activities = []
+    
+    # Get recent quiz results
+    quiz_results = db.query(models.QuizResult).join(models.Goal).filter(
+        models.Goal.user_id == user_id
+    ).order_by(models.QuizResult.completed_at.desc()).limit(5).all()
+    
+    for quiz in quiz_results:
+        activities.append(ActivityData(
+            id=f"quiz_{quiz.id}",
+            type="quiz_attempt",
+            title="Quiz Attempt",
+            description=f"Scored {quiz.score:.0f}% on {quiz.topic}",
+            timestamp=quiz.completed_at.isoformat(),
+            goal_title=quiz.goal.title if quiz.goal else None,
+            metadata={"score": quiz.score, "topic": quiz.topic}
+        ))
+    
+    # Get recent progress updates
+    progress_records = db.query(models.Progress).join(models.Goal).filter(
+        models.Goal.user_id == user_id,
+        models.Progress.time_spent_minutes > 0
+    ).order_by(models.Progress.date.desc()).limit(5).all()
+    
+    for progress in progress_records:
+        activities.append(ActivityData(
+            id=f"progress_{progress.id}",
+            type="study_session",
+            title="Study Session",
+            description=f"Studied for {progress.time_spent_minutes:.0f} minutes",
+            timestamp=progress.date.isoformat(),
+            goal_title=progress.goal.title if progress.goal else None,
+            metadata={"minutes": progress.time_spent_minutes}
+        ))
+    
+    # Get recent goal completions
+    completed_goals = db.query(models.Goal).filter(
+        models.Goal.user_id == user_id,
+        models.Goal.is_completed == True
+    ).order_by(models.Goal.updated_at.desc()).limit(3).all()
+    
+    for goal in completed_goals:
+        activities.append(ActivityData(
+            id=f"goal_completed_{goal.id}",
+            type="goal_completed",
+            title="Goal Completed",
+            description=f"Completed goal: {goal.title}",
+            timestamp=goal.updated_at.isoformat(),
+            goal_title=goal.title,
+            metadata={"goal_id": goal.id}
+        ))
+    
+    # Get recent goal creations (new goals, not completed)
+    new_goals = db.query(models.Goal).filter(
+        models.Goal.user_id == user_id,
+        models.Goal.is_completed == False
+    ).order_by(models.Goal.created_at.desc()).limit(3).all()
+    
+    for goal in new_goals:
+        activities.append(ActivityData(
+            id=f"goal_created_{goal.id}",
+            type="goal_created",
+            title="Goal Created",
+            description=f"Started learning: {goal.title}",
+            timestamp=goal.created_at.isoformat(),
+            goal_title=goal.title,
+            metadata={"goal_id": goal.id}
+        ))
+    
+    # Get recent level ups (from user stats)
+    user_stats = db.query(models.UserStats).filter(
+        models.UserStats.user_id == user_id
+    ).first()
+    
+    if user_stats and user_stats.total_xp > 0:
+        # Calculate current level for display
+        gamification_service = GamificationService(db)
+        level_progress = gamification_service.get_level_progress(user_id)
+        
+        # Use the actual last_updated timestamp from user stats, not current time
+        activities.append(ActivityData(
+            id=f"level_{user_stats.id}",
+            type="level_up",
+            title="Current Level",
+            description=f"Level {level_progress['current_level']} with {level_progress['total_xp']} XP",
+            timestamp=user_stats.updated_at.isoformat() if user_stats.updated_at else datetime.now().isoformat(),
+            metadata=level_progress
+        ))
+    
+    # Sort by timestamp and limit
+    activities.sort(key=lambda x: x.timestamp, reverse=True)
+    return activities[:limit]
+
 # -------------------------------------------------
 # API Endpoints
 # -------------------------------------------------
@@ -366,13 +472,17 @@ async def get_overview_analytics(
     if active_goal:
         active_goal_progress = calculate_goal_progress(db, active_goal)
     
+    # Get quiz stats
+    quiz_stats = get_quiz_analytics(db, user_id)
+    
     return OverviewAnalytics(
         total_study_time_hours=total_study_time_hours,
         study_time_last_7_days=study_time_7_days,
         study_time_last_30_days=study_time_30_days,
         streak_data=streak_data,
         completed_roadmap_steps=completed_steps,
-        active_goal_progress=active_goal_progress
+        active_goal_progress=active_goal_progress,
+        quiz_stats=quiz_stats
     )
 
 @router.get("/goals/current", response_model=CurrentGoalAnalytics)
@@ -426,3 +536,12 @@ async def get_quiz_analytics_endpoint(
         analytics=quiz_data,
         strengths_weaknesses=strengths_weaknesses
     )
+
+@router.get("/activity", response_model=List[ActivityData])
+async def get_user_activity_endpoint(
+    limit: int = 10,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get recent user activity for dashboard"""
+    return get_user_activity(db, current_user.id, limit)

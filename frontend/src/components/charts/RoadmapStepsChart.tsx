@@ -1,5 +1,4 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
-import { useTheme } from '../../contexts/ThemeContext'
 
 interface RoadmapStepsChartProps {
   totalSteps: number
@@ -7,9 +6,6 @@ interface RoadmapStepsChartProps {
 }
 
 export default function RoadmapStepsChart({ totalSteps, completedSteps }: RoadmapStepsChartProps) {
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
-
   const remainingSteps = totalSteps - completedSteps
 
   const data = [
@@ -17,9 +13,8 @@ export default function RoadmapStepsChart({ totalSteps, completedSteps }: Roadma
     { name: 'Remaining', value: remainingSteps },
   ]
 
-  const textColor = isDark ? '#e5e7eb' : '#374151'
-  const gridColor = isDark ? '#374151' : '#e5e7eb'
-  const colors = ['#10b981', '#6b7280']
+  const gridColor = '#E5E7EB'
+  const colors = ['#064E3B', '#E5E7EB']
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -40,16 +35,18 @@ export default function RoadmapStepsChart({ totalSteps, completedSteps }: Roadma
         </Pie>
         <Tooltip
           contentStyle={{
-            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            background: '#FFFFFF',
             border: `1px solid ${gridColor}`,
             borderRadius: '8px',
+            fontFamily: 'Inter',
+            fontSize: '12px',
           }}
-          labelStyle={{ color: textColor }}
+          labelStyle={{ color: '#111827', fontWeight: 600 }}
+          itemStyle={{ color: '#064E3B' }}
         />
         <Legend
-          wrapperStyle={{ color: textColor }}
+          wrapperStyle={{ fontFamily: 'Inter', fontSize: '12px', color: '#6B7280' }}
           iconType="circle"
-          formatter={(value) => <span style={{ color: textColor }}>{value}</span>}
         />
       </PieChart>
     </ResponsiveContainer>

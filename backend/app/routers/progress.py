@@ -129,8 +129,12 @@ async def get_analytics(
     
     if quiz_results:
         avg_score = sum(r.score for r in quiz_results) / len(quiz_results)
+        total_quizzes = len(quiz_results)
+        best_score = max(r.score for r in quiz_results)
     else:
         avg_score = 0.0
+        total_quizzes = 0
+        best_score = 0.0
     
     # Weak and strong topics
     topic_scores = {}
@@ -155,6 +159,8 @@ async def get_analytics(
         completed_goals=completed_goals,
         current_streak_days=current_streak,
         average_quiz_score=avg_score,
+        total_quizzes=total_quizzes,
+        best_quiz_score=best_score,
         weak_topics=weak_topics[:5],  # Top 5
         strong_topics=strong_topics[:5]  # Top 5
     )

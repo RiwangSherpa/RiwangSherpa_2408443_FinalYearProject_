@@ -1,40 +1,16 @@
-import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Flame, Clock, Target, TrendingUp, Plus, BookOpen, ArrowRight } from 'lucide-react'
+import { Flame, Clock, Target, GraduationCap, Plus, HelpCircle, Timer, BookOpen, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
-import { goalsApi, progressApi } from '../lib/api'
-import { Goal, Analytics } from '../types'
+import { useData } from '../contexts/DataContext'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
-import Badge from '../components/ui/Badge'
 import Skeleton from '../components/ui/Skeleton'
 
 export default function Home() {
   const { user } = useAuth()
+  const { goals, analytics, activities, levelData, loading } = useData()
   const navigate = useNavigate()
-  const [goals, setGoals] = useState<Goal[]>([])
-  const [analytics, setAnalytics] = useState<Analytics | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
-    try {
-      const [goalsRes, analyticsRes] = await Promise.all([
-        goalsApi.getAll(),
-        progressApi.getAnalytics(),
-      ])
-      setGoals(goalsRes.data)
-      setAnalytics(analyticsRes.data)
-    } catch (error) {
-      console.error('Failed to load data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -43,7 +19,7 @@ export default function Home() {
           <Skeleton variant="text" width="300px" height="2rem" className="mb-2" />
           <Skeleton variant="text" width="200px" height="1.5rem" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
               <Skeleton variant="text" lines={3} />
@@ -58,209 +34,288 @@ export default function Home() {
     ? Math.round((analytics.completed_goals / analytics.total_goals) * 100)
     : 0
 
-  const recentGoals = goals.slice(0, 3)
+  // Show recent goals in Library (up to 6 goals)
+  const recentGoals = goals.slice(0, 6)
+
+  // Get time-based greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 18) return 'Good afternoon'
+    return 'Good evening'
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-indigo-950/20 p-4 sm:p-6 lg:p-8">
+    <div className="bg-neutral-50 dark:bg-dark-bg-primary min-h-screen px-6 py-8 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
+        {/* Header Section */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="flex justify-between items-start gap-8 mb-8"
         >
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}!
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Here's your learning progress overview
-          </p>
+          <div>
+            <h1 className="font-heading text-3xl font-bold text-primary dark:text-primary-dark mb-2 transition-colors">
+              {getGreeting()}, {user?.email ? user.email.split('@')[0] : 'there'}
+            </h1>
+            <p className="text-sm text-neutral-500 dark:text-dark-text-secondary max-w-sm font-body transition-colors">
+              Ready to tackle your learning objectives? You're only 3 tasks away from completing your weekly goal.
+            </p>
+          </div>
+          {/* Quote Card */}
+          <div className="bg-neutral-100 dark:bg-dark-bg-tertiary border-l-4 border-secondary dark:border-secondary-dark px-4 py-3 rounded-r-lg max-w-xs hidden md:block transition-colors">
+            <span className="text-xs font-semibold uppercase tracking-widest text-secondary dark:text-secondary-dark block mb-1 transition-colors">TODAY'S FOCUS</span>
+            <p className="text-sm text-neutral-700 dark:text-dark-text-secondary italic font-body transition-colors">
+              "The beautiful thing about learning is that no one can take it away from you." — B.B. King
+            </p>
+          </div>
         </motion.div>
 
-        {/* Metrics Cards */}
+        {/* Stats Row */}
         {analytics && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {/* Study Streak */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {/* Streak Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0 }}
             >
-              <div className="bg-white dark:bg-gray-800/80 backdrop-blur rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700/50 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-1">Study Streak</p>
-                    <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{analytics.current_streak_days}</p>
-                    <p className="text-xs text-orange-500 mt-1">days in a row</p>
-                  </div>
-                  <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
-                    <Flame className="w-6 h-6 text-orange-600" />
-                  </div>
+              <div className="bg-tertiary-light dark:bg-dark-bg-tertiary border border-tertiary-muted dark:border-dark-border-secondary rounded-card p-4 transition-colors">
+                <div className="flex justify-between items-start">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-amber-600 dark:text-tertiary">Active Streak</span>
+                  <Flame className="w-4 h-4 text-tertiary dark:text-tertiary" />
                 </div>
+                <p className="font-heading text-2xl font-bold text-neutral-900 dark:text-dark-text-primary mt-2 transition-colors">{analytics.current_streak_days} Days</p>
+                <p className="text-xs text-neutral-500 dark:text-dark-text-tertiary mt-0.5 transition-colors">Keep it going!</p>
               </div>
             </motion.div>
 
-            {/* Study Time */}
+            {/* Study Time Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <div className="bg-white dark:bg-gray-800/80 backdrop-blur rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700/50 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">Study Time</p>
-                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                      {Math.floor(analytics.total_study_time_minutes / 60)}h {analytics.total_study_time_minutes % 60}m
-                    </p>
-                    <p className="text-xs text-blue-500 mt-1">total time</p>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                    <Clock className="w-6 h-6 text-blue-600" />
-                  </div>
+              <div className="bg-white dark:bg-dark-bg-secondary border border-neutral-200 dark:border-dark-border-primary rounded-card p-4 transition-colors">
+                <div className="flex justify-between items-start">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-neutral-400 dark:text-dark-text-tertiary">Study Time</span>
+                  <Clock className="w-4 h-4 text-neutral-400 dark:text-dark-text-tertiary" />
                 </div>
+                <p className="font-heading text-2xl font-bold text-neutral-900 dark:text-dark-text-primary mt-2 transition-colors">
+                  {Math.floor(analytics.total_study_time_minutes / 60)}h {analytics.total_study_time_minutes % 60}m
+                </p>
+                <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary mt-0.5 transition-colors">This week</p>
               </div>
             </motion.div>
 
-            {/* Completed Goals */}
+            {/* Goal Progress Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <div className="bg-white dark:bg-gray-800/80 backdrop-blur rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700/50 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mb-1">Completed</p>
-                    <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                      {analytics.completed_goals}/{analytics.total_goals}
-                    </p>
-                    <p className="text-xs text-emerald-500 mt-1">goals finished</p>
-                  </div>
-                  <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
-                    <Target className="w-6 h-6 text-emerald-600" />
-                  </div>
+              <div className="bg-white dark:bg-dark-bg-secondary border border-neutral-200 dark:border-dark-border-primary rounded-card p-4 transition-colors">
+                <div className="flex justify-between items-start">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-neutral-400 dark:text-dark-text-tertiary">Goal Progress</span>
+                  <Target className="w-4 h-4 text-neutral-400 dark:text-dark-text-tertiary" />
+                </div>
+                <p className="font-heading text-2xl font-bold text-neutral-900 dark:text-dark-text-primary mt-2 transition-colors">{completionRate}%</p>
+                <div className="w-full h-1.5 bg-neutral-200 dark:bg-dark-bg-tertiary rounded-full mt-2 transition-colors">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${completionRate}%` }}
+                    transition={{ duration: 0.8, delay: 0.4 }}
+                    className="h-1.5 bg-primary dark:bg-primary-dark rounded-full transition-colors"
+                  />
                 </div>
               </div>
             </motion.div>
 
-            {/* Overall Progress */}
+            {/* Level Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <div className="bg-white dark:bg-gray-800/80 backdrop-blur rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700/50 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-sm font-medium text-purple-600 dark:text-purple-400 mb-1">Progress</p>
-                    <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{completionRate}%</p>
-                  </div>
-                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-purple-600" />
-                  </div>
+              <div className="bg-primary rounded-card p-4">
+                <div className="flex justify-between items-start">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-white/60">Level</span>
+                  <GraduationCap className="w-4 h-4 text-white/60" />
                 </div>
-                <div className="w-full bg-purple-100 dark:bg-purple-900/30 rounded-full h-2">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${completionRate}%` }}
-                    transition={{ duration: 0.8, delay: 0.4 }}
-                    className="bg-purple-500 h-2 rounded-full"
-                  />
-                </div>
+                <p className="font-heading text-2xl font-bold text-white mt-2">
+                  {levelData?.current_level || 1}
+                </p>
+                <p className="text-xs text-white/60 mt-0.5">
+                  Next level at {levelData?.xp_needed_for_level || 100} XP
+                </p>
               </div>
             </motion.div>
           </div>
         )}
-        
-        <Card className="lg:col-span-1">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
-          <div className="space-y-3">
-            <Button
-              variant="primary"
-              className="w-full justify-start"
-              onClick={() => navigate('/goals')}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create New Goal
-            </Button>
-            <Button
-              variant="secondary"
-              className="w-full justify-start"
-              onClick={() => navigate('/quiz')}
-            >
-              <BookOpen className="w-4 h-4 mr-2" />
-              Take a Quiz
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/productivity')}
-            >
-              <Clock className="w-4 h-4 mr-2" />
-              Start Timer
-            </Button>
-          </div>
-        </Card>
 
-        {/* Recent Goals */}
-        <Card className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Goals</h2>
-            <Link
-              to="/goals"
-              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium flex items-center gap-1"
-            >
-              View all
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+        {/* Quick Actions Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {/* Create Goal CTA */}
+          <Card className="flex items-center justify-between cursor-pointer hover:border-neutral-300 dark:hover:border-dark-border-secondary transition-colors group" onClick={() => navigate('/goals')}>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-dark-bg-tertiary flex items-center justify-center group-hover:bg-primary-muted dark:group-hover:bg-primary/20 transition-colors">
+                <Target className="w-4 h-4 text-neutral-500 dark:text-dark-text-tertiary group-hover:text-primary dark:group-hover:text-primary-dark transition-colors" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-neutral-900 dark:text-dark-text-primary">Create New Goal</p>
+                <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary">Set your next milestone</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-neutral-300 dark:text-dark-text-tertiary" />
+          </Card>
+
+          {/* Take Quiz CTA */}
+          <Card className="flex items-center justify-between cursor-pointer hover:border-neutral-300 dark:hover:border-dark-border-secondary transition-colors group" onClick={() => navigate('/quiz')}>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-dark-bg-tertiary flex items-center justify-center group-hover:bg-primary-muted dark:group-hover:bg-primary/20 transition-colors">
+                <HelpCircle className="w-4 h-4 text-neutral-500 dark:text-dark-text-tertiary group-hover:text-primary dark:group-hover:text-primary-dark transition-colors" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-neutral-900 dark:text-dark-text-primary">Take a Quiz</p>
+                <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary">Validate your knowledge</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-neutral-300 dark:text-dark-text-tertiary" />
+          </Card>
+
+          {/* Start Timer CTA */}
+          <div className="bg-primary dark:bg-primary-dark rounded-card p-4 flex items-center justify-between cursor-pointer hover:bg-primary-light dark:hover:bg-primary/90 transition-colors group" onClick={() => navigate('/productivity')}>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-white/10 dark:bg-white/20 flex items-center justify-center">
+                <Timer className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">Start Timer</p>
+                <p className="text-xs text-white/60 dark:text-white/70">Enter focus mode</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/40 dark:text-white/50" />
           </div>
-          {recentGoals.length === 0 ? (
-            <div className="text-center py-8">
-              <BookOpen className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
-              <p className="text-gray-600 dark:text-gray-300 mb-4">No goals yet. Create your first goal!</p>
-              <Button onClick={() => navigate('/goals')}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Goal
-              </Button>
+        </div>
+
+        {/* Two-Column Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Left - Your Library */}
+          <div className="lg:col-span-3">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="section-heading dark:text-dark-text-primary">Your Library</h2>
+              <Link to="/goals" className="text-sm font-medium text-primary dark:text-primary-dark hover:underline transition-colors">
+                View All
+              </Link>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {recentGoals.map((goal, index) => (
-                <motion.div
-                  key={goal.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <Link
-                    to={`/roadmaps/${goal.id}`}
-                    className="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {recentGoals.length === 0 ? (
+                <Card className="col-span-2 flex flex-col items-center justify-center py-16 text-center">
+                  <BookOpen className="w-10 h-10 text-neutral-300 dark:text-dark-text-tertiary mb-3" />
+                  <p className="text-sm font-semibold text-neutral-600 dark:text-dark-text-secondary mb-1">No goals yet</p>
+                  <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary mb-4">Create your first learning goal to get started</p>
+                  <Button onClick={() => navigate('/goals')}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Goal
+                  </Button>
+                </Card>
+              ) : (
+                recentGoals.map((goal, index) => (
+                  <motion.div
+                    key={goal.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                            {goal.title}
-                          </h3>
-                          {goal.is_completed && (
-                            <Badge variant="success" size="sm">Done</Badge>
-                          )}
+                    <Link
+                      to={`/roadmaps/${goal.id}`}
+                      className="block relative rounded-card overflow-hidden h-36 cursor-pointer group border border-neutral-200 dark:border-dark-border-primary bg-white dark:bg-dark-bg-secondary hover:border-neutral-300 dark:hover:border-dark-border-secondary transition-colors"
+                    >
+                      {/* Content */}
+                      <div className="p-4 h-full flex flex-col justify-between">
+                        <div>
+                          {/* Status Pill */}
+                          <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-pill uppercase tracking-wide mb-2">
+                            {goal.is_completed ? (
+                              <span className="bg-primary text-white dark:bg-primary-dark dark:text-white">Completed</span>
+                            ) : (
+                              <span className="bg-tertiary text-white dark:bg-tertiary dark:text-white">Learning</span>
+                            )}
+                          </span>
+                          <p className="text-sm font-semibold text-neutral-900 dark:text-dark-text-primary font-heading leading-tight">{goal.title}</p>
                         </div>
-                        {goal.description && (
-                          <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1">
-                            {goal.description}
+                        <div className="flex justify-between items-center">
+                          <p className="text-xs text-neutral-500 dark:text-dark-text-tertiary">
+                            {goal.learning_style || 'balanced'}
                           </p>
-                        )}
+                          <ChevronRight className="w-4 h-4 text-neutral-300 dark:text-dark-text-tertiary group-hover:text-neutral-400 dark:group-hover:text-dark-text-secondary transition-colors" />
+                        </div>
                       </div>
-                      <ArrowRight className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
+                    </Link>
+                  </motion.div>
+                ))
+              )}
             </div>
-          )}
-        </Card>
+          </div>
+
+          {/* Right - Recent Activity + Upgrade */}
+          <div className="lg:col-span-2">
+            <h2 className="section-heading dark:text-dark-text-primary mb-4">Recent Activity</h2>
+            <div className="flex flex-col gap-3 mb-6">
+              {activities.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-neutral-500 dark:text-dark-text-tertiary">No recent activity</p>
+                  <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary mt-1">Start learning to see your activity here</p>
+                </div>
+              ) : (
+                activities.map((activity) => {
+                  const getActivityIcon = () => {
+                    switch (activity.type) {
+                      case 'quiz_attempt':
+                        return <HelpCircle className="w-3.5 h-3.5 text-neutral-500 dark:text-dark-text-tertiary" />
+                      case 'study_session':
+                        return <BookOpen className="w-3.5 h-3.5 text-neutral-500 dark:text-dark-text-tertiary" />
+                      case 'goal_completed':
+                        return <Target className="w-3.5 h-3.5 text-neutral-500 dark:text-dark-text-tertiary" />
+                      case 'goal_created':
+                        return <Plus className="w-3.5 h-3.5 text-neutral-500 dark:text-dark-text-tertiary" />
+                      case 'level_up':
+                        return <GraduationCap className="w-3.5 h-3.5 text-neutral-500 dark:text-dark-text-tertiary" />
+                      default:
+                        return <BookOpen className="w-3.5 h-3.5 text-neutral-500 dark:text-dark-text-tertiary" />
+                    }
+                  }
+
+                  return (
+                    <div key={activity.id} className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-dark-bg-tertiary flex items-center justify-center flex-shrink-0 transition-colors">
+                        {getActivityIcon()}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-neutral-800 dark:text-dark-text-primary">{activity.title}</p>
+                        <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary mt-0.5">
+                          {activity.description}
+                          {activity.goal_title && ` • ${activity.goal_title}`}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            {/* Upgrade Card - Only show for Free users */}
+            {user?.subscription_plan !== 'pro' && (
+              <div className="bg-secondary-light dark:bg-dark-bg-tertiary rounded-card p-4 border border-secondary-muted dark:border-dark-border-secondary transition-colors">
+                <p className="font-heading text-sm font-semibold text-secondary dark:text-secondary-dark mb-1 transition-colors">Study Buddy Premium</p>
+                <p className="text-xs text-neutral-500 dark:text-dark-text-tertiary mb-3 transition-colors">Unlock unlimited AI insights and custom flashcards.</p>
+                <button className="btn-primary text-xs px-4 py-2" onClick={() => navigate('/subscription')}>
+                  Upgrade Now
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
