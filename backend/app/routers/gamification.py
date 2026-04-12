@@ -22,13 +22,10 @@ async def get_gamification_profile(
     """Get complete gamification profile for the user"""
     service = GamificationService(db)
     
-    # Ensure stats exist
     service.get_or_create_user_stats(current_user.id)
     
-    # Check for new achievements
     new_achievements = service.check_and_award_achievements(current_user.id)
     
-    # Get all data
     level_progress = service.get_level_progress(current_user.id)
     achievements = service.get_user_achievements(current_user.id)
     
@@ -59,13 +56,10 @@ async def check_achievements(
     """Check and award any newly earned achievements"""
     service = GamificationService(db)
     
-    # Get level before checking achievements
     old_level = service.get_level_progress(current_user.id)["current_level"]
     
-    # Check for new achievements (this also awards XP)
     new_achievements = service.check_and_award_achievements(current_user.id)
     
-    # Get level after (to detect level ups)
     new_level_progress = service.get_level_progress(current_user.id)
     new_level = new_level_progress["current_level"]
     
@@ -101,7 +95,6 @@ async def get_leaderboard(
     service = GamificationService(db)
     leaderboard = service.get_leaderboard(limit)
     
-    # Find current user's rank
     user_rank = None
     for entry in leaderboard:
         if entry["user_id"] == current_user.id:

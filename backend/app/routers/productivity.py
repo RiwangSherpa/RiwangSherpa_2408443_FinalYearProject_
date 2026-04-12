@@ -74,7 +74,6 @@ async def get_sessions(
 @router.get("/tips")
 async def get_productivity_tips():
     """Get AI-generated productivity tips"""
-    # This would typically call AI service, but for now return static tips
     tips = [
         "Take regular breaks to maintain focus",
         "Use the Pomodoro technique: 25 minutes work, 5 minutes break",

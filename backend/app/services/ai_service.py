@@ -27,7 +27,6 @@ class AIService:
             )
             response.raise_for_status()
             
-            # Ollama returns a JSON object with a "response" field
             response_data = response.json()
             return response_data.get("response", "").strip()
             
@@ -53,9 +52,7 @@ class AIService:
         
         text = await self._call_ollama(prompt, temperature=0.2)
         
-        # Parse the response
         steps = []
-        # Match numbered steps: "1. Title - Description. Estimated: X hours"
         step_pattern = r'(\d+)\.\s+(.+?)(?=\d+\.|$)'
         matches = re.finditer(step_pattern, text, re.MULTILINE | re.DOTALL)
         
@@ -63,20 +60,16 @@ class AIService:
             step_number = int(match.group(1))
             content = match.group(2).strip()
             
-            # Extract estimated hours if present
             hours_match = re.search(r'[Ee]stimated:\s*(\d+(?:\.\d+)?)', content)
             estimated_hours = float(hours_match.group(1)) if hours_match else 2.0
             
-            # Remove estimated hours from description
             description = re.sub(r'\s*[Ee]stimated:\s*\d+(?:\.\d+)?\s*hours?\.?', '', content).strip()
             
-            # Split title and description (first sentence or up to dash is title)
             if ' - ' in description:
                 parts = description.split(' - ', 1)
                 title = parts[0].strip()[:120]
                 desc = parts[1].strip() if len(parts) > 1 else description
             else:
-                # First sentence as title
                 sentences = description.split('.')
                 title = sentences[0].strip()[:120] if sentences else description[:120]
                 desc = description
@@ -90,7 +83,6 @@ class AIService:
                     "ai_explanation": desc
                 })
         
-        # Fallback parsing if regex didn't work
         if not steps:
             raw_steps = re.split(r'\n\s*\d+[\.\)]\s*', text)
             step_number = 1
@@ -99,14 +91,11 @@ class AIService:
                 if not s or step_number > num_steps:
                     break
                 
-                # Extract hours if present
                 hours_match = re.search(r'(\d+(?:\.\d+)?)\s*hours?', s, re.IGNORECASE)
                 estimated_hours = float(hours_match.group(1)) if hours_match else 2.0
                 
-                # Clean description
                 desc = re.sub(r'\s*[Ee]stimated?:\s*\d+(?:\.\d+)?\s*hours?\.?', '', s).strip()
                 
-                # Split title/description
                 if ' - ' in desc:
                     parts = desc.split(' - ', 1)
                     title = parts[0].strip()[:120]
@@ -147,17 +136,13 @@ class AIService:
         
         text = await self._call_ollama(prompt, temperature=0.3)
         
-        # Try to parse JSON response
         questions = []
         try:
-            # Clean the response - remove outer markdown code blocks
             cleaned_text = text.strip()
             if cleaned_text.startswith('```'):
-                # Remove only the outer JSON wrapper, not inner markdown
                 cleaned_text = re.sub(r'```(?:json)?\s*', '', cleaned_text)
                 cleaned_text = cleaned_text.rstrip('```').strip()
             
-            # Try to parse JSON normally first
             questions_data = json.loads(cleaned_text)
             if isinstance(questions_data, list):
                 for q in questions_data:
@@ -169,14 +154,10 @@ class AIService:
                             "explanation": q.get("explanation", "")
                         })
         except (json.JSONDecodeError, KeyError, ValueError) as e:
-            # Use custom parser for malformed JSON with code blocks
             questions = self._parse_quiz_with_code_blocks(text, num_questions)
         
-        # Ensure we have the right number of questions
         if len(questions) < num_questions:
-            # Generate additional questions if needed
             remaining = num_questions - len(questions)
-            # For now, we'll just use what we have or pad with placeholders
             pass
         
         return {
@@ -187,8 +168,6 @@ class AIService:
     def _parse_quiz_fallback(self, text: str, num_questions: int) -> List[Dict[str, Any]]:
         """Fallback parser for quiz questions if JSON parsing fails"""
         questions = []
-        # This is a simple fallback - in production, you'd want more robust parsing
-        # For now, return empty list and let the frontend handle it
         return questions
     
     def _parse_quiz_with_code_blocks(self, text: str, num_questions: int) -> List[Dict[str, Any]]:
@@ -196,13 +175,11 @@ class AIService:
         questions = []
         
         try:
-            # Remove outer markdown wrapper
             cleaned_text = text.strip()
             if cleaned_text.startswith('```'):
                 cleaned_text = re.sub(r'```(?:json)?\s*', '', cleaned_text)
                 cleaned_text = cleaned_text.rstrip('```').strip()
             
-            # Find question objects manually
             question_pattern = r'\{\s*"question":\s*"(.*?)",\s*"options":\s*\[(.*?)\],\s*"correct_answer":\s*(\d+),\s*"explanation":\s*"(.*?)"(?:,\s*)?\}'
             
             matches = re.findall(question_pattern, cleaned_text, re.DOTALL)
@@ -210,13 +187,12 @@ class AIService:
             for match in matches:
                 question_text, options_str, correct_answer, explanation = match
                 
-                # Parse options array
                 options = []
                 option_pattern = r'"([^"]*)"'
                 option_matches = re.findall(option_pattern, options_str)
-                options = option_matches[:4]  # Take first 4 options
+                options = option_matches[:4]
                 
-                if len(options) >= 2:  # Need at least 2 options
+                if len(options) >= 2:
                     questions.append({
                         "question": question_text.strip(),
                         "options": options,

@@ -73,7 +73,6 @@ async def get_goal_mastery(
     current_user: models.User = Depends(get_current_user)
 ):
     """Get concept mastery levels for a specific goal"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -155,7 +154,6 @@ async def link_concept_to_goal(
     current_user: models.User = Depends(get_current_user)
 ):
     """Link a concept to a goal with importance weight"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -183,7 +181,6 @@ async def check_goal_readiness(
     current_user: models.User = Depends(get_current_user)
 ):
     """Check if user is ready to start or continue a goal"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -205,7 +202,6 @@ async def get_suggested_difficulty(
     current_user: models.User = Depends(get_current_user)
 ):
     """Get suggested difficulty level based on mastery"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id

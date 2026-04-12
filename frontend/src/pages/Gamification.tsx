@@ -62,7 +62,6 @@ export default function Gamification() {
       setAchievements(profileRes.data.achievements)
       setLevelProgress(profileRes.data.level_progress)
       
-      // If there are newly earned achievements, show celebration
       if (profileRes.data.newly_earned?.length > 0) {
         setNewlyEarned(profileRes.data.newly_earned)
       }
@@ -74,27 +73,24 @@ export default function Gamification() {
   }
 
   const checkNewAchievements = async () => {
-    if (isCheckingAchievements) return // Prevent multiple clicks
+    if (isCheckingAchievements) return
     
     try {
       setIsCheckingAchievements(true)
       const response = await gamificationApi.checkAchievements()
       if (response.data.new_achievements?.length > 0) {
         setNewlyEarned(response.data.new_achievements)
-        // Check for level up
         if (response.data.level_up) {
           setLevelUpInfo({
             oldLevel: response.data.old_level,
             newLevel: response.data.new_level
           })
         }
-        // Update level progress
         if (response.data.current_level_progress) {
           setLevelProgress(response.data.current_level_progress)
         }
         loadData()
       } else {
-        // Switch to achievements tab and scroll to locked section
         setActiveTab('achievements')
         setTimeout(() => {
           const lockedSection = document.getElementById('locked-achievements')

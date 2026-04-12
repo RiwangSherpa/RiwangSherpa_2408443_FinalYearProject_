@@ -5,32 +5,27 @@ import { debounce } from '../utils/debounce'
 import { useAuth } from './AuthContext'
 
 interface DataContextType {
-  // Goals data
   goals: Goal[]
   setGoals: (goals: Goal[]) => void
   loadingGoals: boolean
   refreshGoals: () => Promise<void>
   
-  // Analytics data
   analytics: Analytics | null
   setAnalytics: (analytics: Analytics | null) => void
   loadingAnalytics: boolean
   refreshAnalytics: () => Promise<void>
   
-  // Activity data
   activities: ActivityData[]
   setActivities: (activities: ActivityData[]) => void
   loadingActivities: boolean
   refreshActivities: () => Promise<void>
   addActivity: (newActivity: ActivityData) => void
   
-  // Level data
   levelData: any
   setLevelData: (levelData: any) => void
   loadingLevel: boolean
   refreshLevel: () => Promise<void>
   
-  // Global refresh
   refreshAll: () => Promise<void>
   loading: boolean
 }
@@ -74,7 +69,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [loadingGoals])
 
   const refreshAnalytics = useCallback(async () => {
-    if (loadingAnalytics) return // Prevent duplicate calls
+    if (loadingAnalytics) return
     try {
       setLoadingAnalytics(true)
       const response = await progressApi.getAnalytics()
@@ -88,7 +83,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const refreshActivities = useCallback(
   debounce(async () => {
-    if (loadingActivities) return // Prevent duplicate calls
+    if (loadingActivities) return
     try {
       setLoadingActivities(true)
       const response = await analyticsApi.getActivity(5)
@@ -98,17 +93,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoadingActivities(false)
     }
-  }, 1000), // Debounce with 1 second delay
+  }, 1000),
   [loadingActivities]
 )
 
-  // Add real-time activity update function
   const addActivity = useCallback((newActivity: ActivityData) => {
-    setActivities(prev => [newActivity, ...prev.slice(0, 9)]) // Keep top 10
+    setActivities(prev => [newActivity, ...prev.slice(0, 9)])
   }, [])
 
   const refreshLevel = useCallback(async () => {
-    if (loadingLevel) return // Prevent duplicate calls
+    if (loadingLevel) return
     try {
       setLoadingLevel(true)
       const response = await gamificationApi.getLevel()
@@ -121,7 +115,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [loadingLevel])
 
   const refreshAll = useCallback(async () => {
-    if (initialized) return // Prevent multiple initial loads
+    if (initialized) return
     if (!isAuthenticated || !token) {
       console.log('[DataContext] Skipping refresh - not authenticated')
       return
@@ -136,11 +130,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ])
     } catch (error) {
       console.error('Failed to load initial data:', error)
-      setInitialized(false) // Reset on error to allow retry
+      setInitialized(false)
     }
   }, [refreshGoals, refreshAnalytics, refreshActivities, refreshLevel, isAuthenticated, token])
 
-  // Initial data load - only once and only when authenticated
   useEffect(() => {
     if (!initialized && isAuthenticated && token) {
       refreshAll()

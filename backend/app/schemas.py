@@ -15,9 +15,6 @@ from pydantic import (
 )
 from typing_extensions import Annotated
 
-# -------------------------------------------------
-# Common constrained types (Pydantic v2 style)
-# -------------------------------------------------
 
 LearningStyle = Annotated[
     str,
@@ -39,9 +36,6 @@ SubscriptionPlan = Annotated[
     StringConstraints(pattern="^(free|pro)$")
 ]
 
-# -------------------------------------------------
-# Goal Schemas
-# -------------------------------------------------
 
 class GoalCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
@@ -63,9 +57,6 @@ class GoalResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# -------------------------------------------------
-# Roadmap Schemas
-# -------------------------------------------------
 
 class RoadmapStepCreate(BaseModel):
     step_number: int
@@ -89,7 +80,6 @@ class RoadmapStepResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# Batch response schema - defined after RoadmapStepResponse
 class GoalWithRoadmapResponse(BaseModel):
     goal: GoalResponse
     roadmap: List[RoadmapStepResponse]
@@ -108,9 +98,6 @@ class RoadmapGenerateResponse(BaseModel):
     confidence_score: float = Field(..., ge=0.0, le=1.0)
     prompt_used: Optional[str] = None
 
-# -------------------------------------------------
-# Quiz Schemas
-# -------------------------------------------------
 
 class QuizQuestion(BaseModel):
     question: str
@@ -144,9 +131,6 @@ class QuizSubmitResponse(BaseModel):
     total_questions: int
     feedback: List[Dict[str, Any]]
 
-# -------------------------------------------------
-# Progress Schemas
-# -------------------------------------------------
 
 class ProgressCreate(BaseModel):
     goal_id: int
@@ -165,9 +149,6 @@ class ProgressResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
-# -------------------------------------------------
-# Productivity Schemas
-# -------------------------------------------------
 
 class ProductivitySessionCreate(BaseModel):
     session_type: SessionType = "pomodoro"
@@ -184,9 +165,6 @@ class ProductivitySessionResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
-# -------------------------------------------------
-# AI Explanation Schemas
-# -------------------------------------------------
 
 class AIExplanationRequest(BaseModel):
     roadmap_step_id: int
@@ -199,9 +177,6 @@ class AIExplanationResponse(BaseModel):
     prompt_used: Optional[str] = None
 
 
-# -------------------------------------------------
-# Analytics Schemas
-# -------------------------------------------------
 
 class AnalyticsResponse(BaseModel):
     total_study_time_minutes: float
@@ -256,12 +231,9 @@ class PasswordReset(BaseModel):
 class PasswordResetResponse(BaseModel):
     message: str
 
-# -------------------------------------------------
-# Subscription Schemas
-# -------------------------------------------------
 
 class SubscriptionStatus(BaseModel):
-    plan: str  # Changed from SubscriptionPlan to str to match .value output
+    plan: str
     is_active: bool
     expires_at: Optional[datetime]
 

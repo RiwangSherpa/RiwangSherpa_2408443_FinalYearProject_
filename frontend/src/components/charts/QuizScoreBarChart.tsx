@@ -11,7 +11,6 @@ interface QuizScoreBarChartProps {
 }
 
 export default function QuizScoreBarChart({ data }: QuizScoreBarChartProps) {
-  // Format data for chart (limit to top 10 topics)
   const chartData = data
     .slice(0, 10)
     .map((item) => ({

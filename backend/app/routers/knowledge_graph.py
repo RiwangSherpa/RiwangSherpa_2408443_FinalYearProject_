@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/knowledge-graph", tags=["knowledge-graph"])
 
 class CreateNodeRequest(BaseModel):
     label: str
-    node_type: str = "concept"  # concept, skill, resource, milestone
+    node_type: str = "concept"
     description: str = None
     x_position: float = None
     y_position: float = None
@@ -27,7 +27,7 @@ class CreateNodeRequest(BaseModel):
 class CreateEdgeRequest(BaseModel):
     source_node_id: int
     target_node_id: int
-    edge_type: str = "prerequisite"  # prerequisite, related, sequence
+    edge_type: str = "prerequisite"
     strength: float = 1.0
 
 
@@ -39,7 +39,6 @@ async def create_node(
     current_user: models.User = Depends(get_current_user)
 ):
     """Create a new knowledge graph node for a goal"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -79,7 +78,6 @@ async def create_edge(
     current_user: models.User = Depends(get_current_user)
 ):
     """Create an edge between nodes in a goal's knowledge graph"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -116,7 +114,6 @@ async def get_graph(
     current_user: models.User = Depends(get_current_user)
 ):
     """Get complete knowledge graph for a goal"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -138,7 +135,6 @@ async def auto_generate_graph(
     current_user: models.User = Depends(get_current_user)
 ):
     """Auto-generate knowledge graph from roadmap steps"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -156,12 +152,11 @@ async def auto_generate_graph(
 @router.patch("/nodes/{node_id}/mastery")
 async def update_node_mastery(
     node_id: int,
-    mastery_level: float,  # 0-1
+    mastery_level: float,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     """Update mastery level for a knowledge node"""
-    # Verify node belongs to user's goal
     node = db.query(models.KnowledgeNode).join(
         models.Goal
     ).filter(
@@ -192,7 +187,6 @@ async def get_learning_path(
     current_user: models.User = Depends(get_current_user)
 ):
     """Get recommended learning path based on current mastery"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -218,7 +212,6 @@ async def get_graph_coverage(
     current_user: models.User = Depends(get_current_user)
 ):
     """Get learning coverage statistics for the graph"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -240,7 +233,6 @@ async def get_unlocked_nodes(
     current_user: models.User = Depends(get_current_user)
 ):
     """Get nodes that are unlocked (prerequisites met)"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id

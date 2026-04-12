@@ -32,7 +32,6 @@ export default function Goals() {
 
   const loadGoalProgress = async () => {
     try {
-      // Load progress for each goal
       const progressMap: Record<number, { completed: number; total: number }> = {}
       for (const goal of goals) {
         try {
@@ -41,7 +40,6 @@ export default function Goals() {
           const completed = steps.filter((s: { is_completed: boolean }) => s.is_completed).length
           progressMap[goal.id] = { completed, total: steps.length }
         } catch (error) {
-          // If roadmap doesn't exist yet, set to 0
           progressMap[goal.id] = { completed: 0, total: 0 }
         }
       }
@@ -67,16 +65,13 @@ export default function Goals() {
       })
       console.log('[Goals] Goal created:', response.data)
       
-      // Reset form
       setNewGoal({ title: '', description: '' })
       setShowGoalForm(false)
       
-      // Force refresh goals list
       console.log('[Goals] Refreshing goals list...')
       await refreshGoals()
       console.log('[Goals] Goals list refreshed')
       
-      // Refresh activities
       refreshActivities()
     } catch (error: any) {
       console.error('[Goals] Failed to create goal:', error)

@@ -9,13 +9,13 @@ type TimerState = 'idle' | 'running' | 'paused' | 'completed'
 
 export default function Productivity() {
   const [timerState, setTimerState] = useState<TimerState>('idle')
-  const [timeLeft, setTimeLeft] = useState(25 * 60) // 25 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(25 * 60)
   const [sessionType, setSessionType] = useState<'pomodoro' | 'break'>('pomodoro')
   const intervalRef = useRef<number | null>(null)
   const [sessionId, setSessionId] = useState<number | null>(null)
 
-  const POMODORO_TIME = 25 * 60 // 25 minutes
-  const BREAK_TIME = 5 * 60 // 5 minutes
+  const POMODORO_TIME = 25 * 60
+  const BREAK_TIME = 5 * 60
 
   useEffect(() => {
     if (timerState === 'running') {

@@ -28,23 +28,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(response.data)
     } catch (error: any) {
       console.error('Failed to load user:', error)
-      // Only logout on authentication errors (401), not on server errors (429, 500)
       if (error.response?.status === 401) {
         localStorage.removeItem('auth_token')
         setToken(null)
         setUser(null)
       }
-      // For other errors (429, 500), keep user logged in
     } finally {
       setLoading(false)
     }
   }, [])
 
-  // Track time when user is authenticated
   useTimeTracker(!!user && !!token)
 
   useEffect(() => {
-    // Check for stored token on mount
     const storedToken = localStorage.getItem('auth_token')
     if (storedToken) {
       setToken(storedToken)

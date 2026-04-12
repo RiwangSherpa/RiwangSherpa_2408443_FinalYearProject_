@@ -10,13 +10,11 @@ from pathlib import Path
 from typing import Optional
 
 
-# Generate a secure secret key if not provided
 def get_secret_key() -> str:
     """Get or generate a secure JWT secret key"""
     key = os.getenv("SECRET_KEY")
     if key:
         return key
-    # Generate and log a new key (user should save this to .env)
     new_key = secrets.token_hex(32)
     print(f"WARNING: Generated temporary SECRET_KEY. Set SECRET_KEY={new_key} in .env for persistence")
     return new_key
@@ -24,30 +22,24 @@ def get_secret_key() -> str:
 
 class Settings(BaseSettings):
     """Application settings"""
-    # Ollama Configuration (PRIMARY AI)
-    OLLAMA_MODEL: str = "dolphin3:8b"  # Primary AI model
-    OLLAMA_BASE_URL: str = "http://localhost:11434"  # Ollama API URL
+    OLLAMA_MODEL: str = "dolphin3:8b"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
     
-    # Database
     DATABASE_URL: str = "sqlite:///./database/study_buddy.db"
     LOG_LEVEL: str = "INFO"
     
-    # JWT Authentication - SECURE: Loaded from environment or auto-generated
     SECRET_KEY: str = Field(default_factory=get_secret_key)
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-3.5-turbo"
 
-    # Password Reset
     PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = 24
     
-    # Rate Limiting
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = 60
-    RATE_LIMIT_AI_REQUESTS_PER_HOUR: int = 100  # Pro tier
-    RATE_LIMIT_AI_REQUESTS_PER_HOUR_FREE: int = 10  # Free tier
+    RATE_LIMIT_AI_REQUESTS_PER_HOUR: int = 100
+    RATE_LIMIT_AI_REQUESTS_PER_HOUR_FREE: int = 10
     
-    # Google OAuth Configuration
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
@@ -58,7 +50,7 @@ class Settings(BaseSettings):
         case_sensitive = True
 
 settings = Settings()
-BACKEND_DIR = Path(__file__).resolve().parent.parent  # Points to backend/
+BACKEND_DIR = Path(__file__).resolve().parent.parent
 DB_DIR = BACKEND_DIR / "database"
-DB_DIR.mkdir(exist_ok=True)  # Create folder if missing
+DB_DIR.mkdir(exist_ok=True)
 settings.DATABASE_URL = f"sqlite:///{DB_DIR / 'study_buddy.db'}"

@@ -61,11 +61,9 @@ def check_daily_limit(feature: str, limit: int):
         user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
     ) -> User:
-        # Pro users have unlimited access
         if user.subscription_plan == SubscriptionPlan.PRO:
             return user
         
-        # Check today's usage
         today = date.today()
         usage = db.query(UserDailyUsage).filter(
             UserDailyUsage.user_id == user.id,
@@ -113,7 +111,6 @@ def check_active_goals_limit(user: User = Depends(get_current_user), db: Session
     if user.subscription_plan == SubscriptionPlan.PRO:
         return user
     
-    # Count active (non-completed) goals
     from app.models import Goal
     active_goals_count = db.query(Goal).filter(
         Goal.user_id == user.id,

@@ -20,10 +20,8 @@ export default function StreakDaysGraph({ data, title = 'Study Streak' }: Streak
   const [daysRange, setDaysRange] = useState<number>(30)
   const [startIndex, setStartIndex] = useState<number>(0)
   
-  // Sort data by date descending (newest first)
   const sortedData = [...data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   
-  // Get visible data based on range and start index (start from most recent)
   const visibleData = sortedData.slice(startIndex, startIndex + daysRange).reverse()
   
   const maxStreak = Math.max(...visibleData.map(d => d.streakDays), 1)

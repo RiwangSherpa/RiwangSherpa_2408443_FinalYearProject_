@@ -18,10 +18,8 @@ export default function Login() {
   const location = useLocation()
 
   useEffect(() => {
-    // Check if there's a success message from registration
     if (location.state?.message) {
       setSuccessMessage(location.state.message)
-      // Clear the message after displaying it
       window.history.replaceState({}, document.title)
     }
   }, [location.state])

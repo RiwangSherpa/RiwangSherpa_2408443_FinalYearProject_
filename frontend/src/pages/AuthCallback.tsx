@@ -22,7 +22,6 @@ export default function AuthCallback() {
       }
 
       try {
-        // Update AuthContext with token and load user - then redirect
         await completeOAuthLogin(token)
         navigate('/dashboard', { replace: true })
       } catch (err) {

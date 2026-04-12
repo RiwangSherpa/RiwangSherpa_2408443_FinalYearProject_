@@ -21,7 +21,6 @@ from app.config import settings
 
 router = APIRouter()
 
-# Google OAuth Configuration
 GOOGLE_CLIENT_ID = settings.GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET = settings.GOOGLE_CLIENT_SECRET
 GOOGLE_REDIRECT_URI = settings.GOOGLE_REDIRECT_URI
@@ -50,7 +49,6 @@ async def google_login():
             detail="Google OAuth not configured"
         )
     
-    # Build OAuth URL
     params = {
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": GOOGLE_REDIRECT_URI,
@@ -82,7 +80,6 @@ async def google_callback(
     
     print(f"DEBUG: Google config loaded - Client ID: {GOOGLE_CLIENT_ID[:20]}...")
     
-    # Exchange code for access token
     async with httpx.AsyncClient() as client:
         print(f"DEBUG: Exchanging code for token...")
         token_response = await client.post(
@@ -108,7 +105,6 @@ async def google_callback(
         tokens = token_response.json()
         access_token = tokens.get("access_token")
         
-        # Get user info from Google
         userinfo_response = await client.get(
             GOOGLE_USERINFO_URL,
             headers={"Authorization": f"Bearer {access_token}"}
@@ -122,7 +118,6 @@ async def google_callback(
         
         google_user = userinfo_response.json()
     
-    # Extract user data
     google_id = google_user.get("id")
     email = google_user.get("email")
     full_name = google_user.get("name")
@@ -134,16 +129,13 @@ async def google_callback(
             detail="Invalid user data from Google"
         )
     
-    # Check if user exists and create/update as needed
     try:
         user = db.query(models.User).filter(models.User.google_id == google_id).first()
 
         if not user:
-            # Check if user with same email exists (local account)
             existing_user = get_user_by_email(db, email)
 
             if existing_user:
-                # Merge accounts: add google_id to existing user
                 existing_user.google_id = google_id
                 existing_user.provider = "google"
                 if avatar_url and not existing_user.avatar_url:
@@ -151,7 +143,6 @@ async def google_callback(
                 db.commit()
                 user = existing_user
             else:
-                # Create new user
                 user = models.User(
                     email=email,
                     full_name=full_name,
@@ -159,14 +150,13 @@ async def google_callback(
                     provider="google",
                     avatar_url=avatar_url,
                     is_active=True,
-                    is_verified=True,  # Google accounts are pre-verified
+                    is_verified=True,
                     subscription_plan=models.SubscriptionPlan.FREE,
                 )
                 db.add(user)
                 db.commit()
                 db.refresh(user)
                 
-                # Initialize user stats for new user
                 user_stats = models.UserStats(
                     user_id=user.id,
                     total_xp=0,
@@ -186,10 +176,8 @@ async def google_callback(
         logger.exception("Database error during Google login: %s", str(e))
         raise
 
-    # Generate JWT token
     access_token = create_access_token(data={"sub": user.email})
     
-    # Redirect to frontend with token
     redirect_url = f"{FRONTEND_URL}/auth/callback?token={access_token}"
     print(f"DEBUG: Redirecting to frontend: {redirect_url}")
     return RedirectResponse(url=redirect_url)

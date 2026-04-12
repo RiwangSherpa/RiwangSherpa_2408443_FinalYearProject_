@@ -15,11 +15,9 @@ export default function Logo({
   const [logoSrc, setLogoSrc] = useState<string>('')
 
   useEffect(() => {
-    // Dynamic import to avoid TypeScript issues
     import('../assets/logo.png').then(module => {
       setLogoSrc(module.default)
     }).catch(() => {
-      // Fallback if image fails to load
       console.warn('Failed to load logo image')
     })
   }, [])
@@ -47,7 +45,6 @@ export default function Logo({
           className={`${sizeClasses[size]} rounded-lg object-contain`}
         />
       ) : (
-        // Fallback placeholder
         <div className={`${sizeClasses[size]} bg-primary rounded-lg flex items-center justify-center`}>
           <span className="text-white font-bold text-xs font-heading">SB</span>
         </div>

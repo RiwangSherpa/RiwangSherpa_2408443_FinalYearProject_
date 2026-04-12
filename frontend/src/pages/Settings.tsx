@@ -10,7 +10,6 @@ export default function Settings() {
   })
   const [isSaving, setIsSaving] = useState(false)
 
-  // Load settings from localStorage on component mount
   useEffect(() => {
     const savedSettings = localStorage.getItem('studyBuddySettings')
     if (savedSettings) {
@@ -26,13 +25,10 @@ export default function Settings() {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      // Save settings to localStorage
       localStorage.setItem('studyBuddySettings', JSON.stringify(settings))
       
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      // Show success message
       alert('Settings saved successfully!')
     } catch (error) {
       console.error('Failed to save settings:', error)

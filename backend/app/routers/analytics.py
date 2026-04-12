@@ -20,9 +20,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# -------------------------------------------------
-# Analytics Schemas
-# -------------------------------------------------
 
 class StudyTimeData(BaseModel):
     date: str
@@ -65,7 +62,7 @@ class StrengthsWeaknessesData(BaseModel):
 
 class ActivityData(BaseModel):
     id: str
-    type: str  # 'goal_completed', 'goal_progress', 'quiz_attempt', 'level_up', 'study_session'
+    type: str
     title: str
     description: str
     timestamp: str
@@ -89,18 +86,13 @@ class QuizAnalytics(BaseModel):
     analytics: QuizAnalyticsData
     strengths_weaknesses: StrengthsWeaknessesData
 
-# -------------------------------------------------
-# Helper Functions
-# -------------------------------------------------
 
 def get_user_streak_data(db: Session, user_id: int, is_pro: bool = False) -> StreakData:
     """Calculate current and longest study streaks"""
-    # Get study streaks for the user
     query = db.query(models.StudyStreak).filter(
         models.StudyStreak.user_id == user_id
     )
     
-    # For free users, only get last 7 days of streak data
     if not is_pro:
         seven_days_ago = datetime.now() - timedelta(days=7)
         query = query.filter(models.StudyStreak.date >= seven_days_ago)
@@ -110,7 +102,6 @@ def get_user_streak_data(db: Session, user_id: int, is_pro: bool = False) -> Str
     if not streaks:
         return StreakData(current_streak=0, longest_streak=0)
     
-    # Calculate current streak
     current_streak = 0
     today = datetime.now().date()
     
@@ -122,7 +113,6 @@ def get_user_streak_data(db: Session, user_id: int, is_pro: bool = False) -> Str
             else:
                 break
     
-    # Calculate longest streak
     longest_streak = 0
     temp_streak = 0
     
@@ -140,7 +130,6 @@ def get_study_time_data(db: Session, user_id: int, days: int) -> List[StudyTimeD
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days-1)
     
-    # Get progress records and productivity sessions
     progress_data = db.query(
         func.date(models.Progress.date).label('date'),
         func.sum(models.Progress.time_spent_minutes).label('minutes')
@@ -150,7 +139,6 @@ def get_study_time_data(db: Session, user_id: int, days: int) -> List[StudyTimeD
         func.date(models.Progress.date) <= end_date.date()
     ).group_by(func.date(models.Progress.date)).all()
     
-    # Get productivity sessions
     productivity_data = db.query(
         func.date(models.ProductivitySession.started_at).label('date'),
         func.sum(models.ProductivitySession.duration_minutes).label('minutes')
@@ -161,7 +149,6 @@ def get_study_time_data(db: Session, user_id: int, days: int) -> List[StudyTimeD
         func.date(models.ProductivitySession.started_at) <= end_date.date()
     ).group_by(func.date(models.ProductivitySession.started_at)).all()
     
-    # Combine data
     daily_data = {}
     for data in progress_data:
         daily_data[data.date] = daily_data.get(data.date, 0) + float(data.minutes)
@@ -169,7 +156,6 @@ def get_study_time_data(db: Session, user_id: int, days: int) -> List[StudyTimeD
     for data in productivity_data:
         daily_data[data.date] = daily_data.get(data.date, 0) + float(data.minutes)
     
-    # Fill missing days with 0
     result = []
     for i in range(days):
         current_date = (start_date + timedelta(days=i)).date()
@@ -212,7 +198,6 @@ def get_roadmap_progress(db: Session, goal: models.Goal) -> RoadmapProgressData:
     completed_steps = sum(1 for step in goal.roadmap_steps if step.is_completed)
     
     estimated_hours = sum(step.estimated_hours for step in goal.roadmap_steps)
-    # Convert total minutes spent on this goal to hours
     actual_study_hours = (
         sum(prog.time_spent_minutes for prog in goal.progress_records) / 60
         if goal.progress_records
@@ -221,7 +206,6 @@ def get_roadmap_progress(db: Session, goal: models.Goal) -> RoadmapProgressData:
     
     completion_percentage = (completed_steps / total_steps * 100) if total_steps > 0 else 0
     
-    # Create steps timeline
     steps_timeline = []
     for step in sorted(goal.roadmap_steps, key=lambda x: x.step_number):
         steps_timeline.append({
@@ -243,7 +227,6 @@ def get_roadmap_progress(db: Session, goal: models.Goal) -> RoadmapProgressData:
 
 def get_quiz_analytics(db: Session, user_id: int) -> QuizAnalyticsData:
     """Get comprehensive quiz analytics for a user"""
-    # Get all quiz results for user's goals
     quiz_results = db.query(models.QuizResult).join(models.Goal).filter(
         models.Goal.user_id == user_id
     ).order_by(models.QuizResult.completed_at.desc()).all()
@@ -264,7 +247,6 @@ def get_quiz_analytics(db: Session, user_id: int) -> QuizAnalyticsData:
     best_score = max(scores)
     worst_score = min(scores)
     
-    # Score history for line chart
     score_history = []
     for quiz in quiz_results:
         score_history.append({
@@ -273,7 +255,6 @@ def get_quiz_analytics(db: Session, user_id: int) -> QuizAnalyticsData:
             "topic": quiz.topic
         })
     
-    # Topic performance
     topic_scores = {}
     for quiz in quiz_results:
         if quiz.topic not in topic_scores:
@@ -312,7 +293,6 @@ def get_strengths_weaknesses(db: Session, user_id: int) -> StrengthsWeaknessesDa
         elif topic_data["average_score"] < 50:
             weak_topics.append(topic_data)
     
-    # Generate suggestions
     if weak_topics:
         suggestions.append(f"Focus on improving {', '.join([t['topic'] for t in weak_topics[:2]])} through additional practice")
     
@@ -335,7 +315,6 @@ def get_user_activity(db: Session, user_id: int, limit: int = 10) -> List[Activi
     """Get recent user activity for dashboard"""
     activities = []
     
-    # Get recent quiz results
     quiz_results = db.query(models.QuizResult).join(models.Goal).filter(
         models.Goal.user_id == user_id
     ).order_by(models.QuizResult.completed_at.desc()).limit(5).all()
@@ -351,7 +330,6 @@ def get_user_activity(db: Session, user_id: int, limit: int = 10) -> List[Activi
             metadata={"score": quiz.score, "topic": quiz.topic}
         ))
     
-    # Get recent progress updates
     progress_records = db.query(models.Progress).join(models.Goal).filter(
         models.Goal.user_id == user_id,
         models.Progress.time_spent_minutes > 0
@@ -368,7 +346,6 @@ def get_user_activity(db: Session, user_id: int, limit: int = 10) -> List[Activi
             metadata={"minutes": progress.time_spent_minutes}
         ))
     
-    # Get recent goal completions
     completed_goals = db.query(models.Goal).filter(
         models.Goal.user_id == user_id,
         models.Goal.is_completed == True
@@ -385,7 +362,6 @@ def get_user_activity(db: Session, user_id: int, limit: int = 10) -> List[Activi
             metadata={"goal_id": goal.id}
         ))
     
-    # Get recent goal creations (new goals, not completed)
     new_goals = db.query(models.Goal).filter(
         models.Goal.user_id == user_id,
         models.Goal.is_completed == False
@@ -402,17 +378,14 @@ def get_user_activity(db: Session, user_id: int, limit: int = 10) -> List[Activi
             metadata={"goal_id": goal.id}
         ))
     
-    # Get recent level ups (from user stats)
     user_stats = db.query(models.UserStats).filter(
         models.UserStats.user_id == user_id
     ).first()
     
     if user_stats and user_stats.total_xp > 0:
-        # Calculate current level for display
         gamification_service = GamificationService(db)
         level_progress = gamification_service.get_level_progress(user_id)
         
-        # Use the actual last_updated timestamp from user stats, not current time
         activities.append(ActivityData(
             id=f"level_{user_stats.id}",
             type="level_up",
@@ -422,13 +395,9 @@ def get_user_activity(db: Session, user_id: int, limit: int = 10) -> List[Activi
             metadata=level_progress
         ))
     
-    # Sort by timestamp and limit
     activities.sort(key=lambda x: x.timestamp, reverse=True)
     return activities[:limit]
 
-# -------------------------------------------------
-# API Endpoints
-# -------------------------------------------------
 
 @router.get("/overview", response_model=OverviewAnalytics)
 async def get_overview_analytics(
@@ -438,12 +407,10 @@ async def get_overview_analytics(
     """Get overview analytics for the dashboard"""
     user_id = current_user.id
     
-    # Get total study time
     total_study_time = db.query(func.sum(models.Progress.time_spent_minutes)).join(models.Goal).filter(
         models.Goal.user_id == user_id
     ).scalar() or 0.0
     
-    # Add productivity sessions
     productivity_time = db.query(func.sum(models.ProductivitySession.duration_minutes)).filter(
         models.ProductivitySession.user_id == user_id,
         models.ProductivitySession.was_completed == True
@@ -452,27 +419,22 @@ async def get_overview_analytics(
     total_study_time += productivity_time
     total_study_time_hours = total_study_time / 60
     
-    # Get study time data
     study_time_7_days = get_study_time_data(db, user_id, 7)
     study_time_30_days = get_study_time_data(db, user_id, 30)
     
-    # Get streak data (limited to 7 days for free users)
     is_pro = current_user.subscription_plan == models.SubscriptionPlan.PRO
     streak_data = get_user_streak_data(db, user_id, is_pro)
     
-    # Get completed roadmap steps
     completed_steps = db.query(func.count(models.RoadmapStep.id)).join(models.Goal).filter(
         models.Goal.user_id == user_id,
         models.RoadmapStep.is_completed == True
     ).scalar() or 0
     
-    # Get active goal progress
     active_goal = get_active_goal(db, user_id)
     active_goal_progress = None
     if active_goal:
         active_goal_progress = calculate_goal_progress(db, active_goal)
     
-    # Get quiz stats
     quiz_stats = get_quiz_analytics(db, user_id)
     
     return OverviewAnalytics(

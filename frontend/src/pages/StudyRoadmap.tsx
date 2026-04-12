@@ -43,7 +43,6 @@ export default function StudyRoadmap() {
         goalsApi.getAll()
       ])
       setAllRoadmaps(roadmapsRes.data)
-      // Create a map of goal_id to goal for quick lookup
       const goalsMapData = goalsRes.data.reduce((acc: Record<number, Goal>, g: Goal) => {
         acc[g.id] = g
         return acc
@@ -94,13 +93,11 @@ export default function StudyRoadmap() {
   }
 
   const handleToggleStep = async (stepId: number, isCompleted: boolean) => {
-    // Optimistic UI update - immediately update the UI
     const updatedSteps = steps.map(step => 
       step.id === stepId ? { ...step, is_completed: !isCompleted } : step
     )
     setSteps(updatedSteps)
     
-    // Prevent multiple clicks
     const button = document.querySelector(`[data-step-id="${stepId}"]`) as HTMLButtonElement
     if (button) {
       button.disabled = true
@@ -113,7 +110,6 @@ export default function StudyRoadmap() {
       } else {
         response = await roadmapsApi.completeStep(stepId)
         
-        // Check for achievements and level up from step completion
         if (response.data.new_achievements?.length > 0) {
           setShowCelebration(true)
           setNewAchievements(response.data.new_achievements)
@@ -122,7 +118,6 @@ export default function StudyRoadmap() {
           setLevelUpInfo(response.data.level_up)
         }
         
-        // Check for achievements and level up from goal completion
         if (response.data.goal_completed) {
           setShowCelebration(true)
           if (response.data.new_achievements?.length > 0) {
@@ -131,34 +126,28 @@ export default function StudyRoadmap() {
           if (response.data.level_up) {
             setLevelUpInfo(response.data.level_up)
           }
-          // Hide celebration after 5 seconds
           setTimeout(() => {
             setShowCelebration(false)
           }, 5000)
         }
         
-        // Refresh activities to show recent actions
         refreshActivities()
       }
       
-      // Update goal status locally if needed
       if (goal && response?.data.goal_completed) {
         setGoal({ ...goal, is_completed: true })
       }
       
     } catch (error: any) {
       console.error('Failed to update step:', error)
-      // Rollback on error
       setSteps(steps)
       
-      // Handle 429 rate limit gracefully
       if (error.response?.status === 429) {
         alert('Please wait a moment before trying again.')
       } else {
         alert('Failed to update step. Please try again.')
       }
     } finally {
-      // Re-enable button
       if (button) {
         button.disabled = false
       }
@@ -173,7 +162,6 @@ export default function StudyRoadmap() {
     }
     try {
       await roadmapsApi.delete(goalIdToDelete)
-      // Refresh the list
       loadAllRoadmaps()
     } catch (error) {
       console.error('Failed to delete roadmap:', error)
@@ -199,7 +187,6 @@ export default function StudyRoadmap() {
     )
   }
 
-  // Show all roadmaps when no goal is selected
   if (!goalId) {
     const groupedRoadmaps = groupRoadmapsByGoal(allRoadmaps)
     const goalIds = Object.keys(groupedRoadmaps).map(Number)

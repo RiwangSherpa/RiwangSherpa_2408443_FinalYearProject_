@@ -47,19 +47,13 @@ class BayesianKnowledgeTracer:
         Returns:
             Updated mastery probability
         """
-        # Calculate probability of observation given knowledge state
         if is_correct:
-            # P(correct | knows) * P(knows) + P(correct | doesn't know) * P(doesn't know)
             p_correct = (1 - self.slip_rate) * current_mastery + self.guess_rate * (1 - current_mastery)
-            # P(knows | correct)
             posterior = ((1 - self.slip_rate) * current_mastery) / p_correct if p_correct > 0 else current_mastery
         else:
-            # P(incorrect | knows) * P(knows) + P(incorrect | doesn't know) * P(doesn't know)
             p_incorrect = self.slip_rate * current_mastery + (1 - self.guess_rate) * (1 - current_mastery)
-            # P(knows | incorrect)
             posterior = (self.slip_rate * current_mastery) / p_incorrect if p_incorrect > 0 else current_mastery
         
-        # Apply learning (probability of transitioning to known state)
         updated_mastery = posterior + (1 - posterior) * self.learn_rate
         
         return min(1.0, updated_mastery)
@@ -155,7 +149,6 @@ class AdaptiveLearningService:
         """
         mastery = self.get_user_mastery(user_id, concept_id)
         
-        # Update using BKT
         new_mastery = self.bkt.update_knowledge(
             mastery.mastery_score,
             is_correct
@@ -167,10 +160,8 @@ class AdaptiveLearningService:
             mastery.correct_count += 1
         mastery.last_attempt_at = datetime.utcnow()
         
-        # Update confidence based on number of attempts
         mastery.confidence = min(0.95, 0.1 + (mastery.attempts_count * 0.05))
         
-        # Update suggested difficulty
         mastery.suggested_difficulty = self.bkt.suggest_difficulty(new_mastery)
         
         self.db.commit()
@@ -234,7 +225,6 @@ class AdaptiveLearningService:
         Returns:
             Dict with weak concepts, suggested difficulty, and study focus areas
         """
-        # Get all user mastery records
         all_mastery = self.db.query(models.UserConceptMastery).filter(
             models.UserConceptMastery.user_id == user_id
         ).all()
@@ -247,7 +237,6 @@ class AdaptiveLearningService:
                 "suggested_difficulty": "easy"
             }
         
-        # Categorize concepts
         weak = []
         strong = []
         
@@ -268,7 +257,6 @@ class AdaptiveLearningService:
                 elif mastery.mastery_score > 0.8:
                     strong.append(concept_data)
         
-        # Generate recommendations
         recommendations = []
         
         if weak:
@@ -278,7 +266,6 @@ class AdaptiveLearningService:
         if len(strong) > len(weak):
             recommendations.append("Great progress! Consider tackling more advanced topics")
         
-        # Calculate suggested difficulty based on average mastery
         avg_mastery = sum(m.mastery_score for m in all_mastery) / len(all_mastery)
         suggested_difficulty = self.bkt.suggest_difficulty(avg_mastery)
         
@@ -332,7 +319,6 @@ class AdaptiveLearningService:
         Returns:
             Dict with readiness score and missing prerequisites
         """
-        # Get all concepts for this goal
         goal_concepts = self.db.query(models.GoalConcept).filter(
             models.GoalConcept.goal_id == goal_id
         ).all()
@@ -344,7 +330,6 @@ class AdaptiveLearningService:
                 "missing_prerequisites": []
             }
         
-        # Get mastery for each concept
         concept_mastery = []
         weighted_score = 0
         total_weight = 0
@@ -366,7 +351,6 @@ class AdaptiveLearningService:
         
         readiness_score = weighted_score / total_weight if total_weight > 0 else 1.0
         
-        # Identify missing prerequisites
         missing = [
             cm for cm in concept_mastery 
             if cm["mastery"] < 0.4 and cm["importance"] > 0.5

@@ -30,7 +30,6 @@ async def generate_roadmap(
         raise HTTPException(status_code=404, detail="Goal not found")
     
     try:
-        # Call AI service
         ai_result = await ai_service.generate_roadmap(
             goal_title=goal.title,
             goal_description=goal.description or "",
@@ -38,7 +37,6 @@ async def generate_roadmap(
             num_steps=request.num_steps
         )
         
-        # Save roadmap steps to database
         steps = []
         for step_data in ai_result["steps"]:
             db_step = models.RoadmapStep(
@@ -54,7 +52,6 @@ async def generate_roadmap(
         
         db.commit()
         
-        # Refresh to get IDs
         for step in steps:
             db.refresh(step)
         
@@ -62,7 +59,7 @@ async def generate_roadmap(
             success=True,
             steps=[schemas.RoadmapStepResponse.model_validate(step) for step in steps],
             confidence_score=ai_result.get("confidence_score", 0.85),
-            prompt_used=None  # Could store actual prompt for transparency
+            prompt_used=None
         )
         
     except Exception as e:
@@ -100,7 +97,6 @@ async def complete_step(
     if not step:
         raise HTTPException(status_code=404, detail="Step not found")
     
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == step.goal_id,
         models.Goal.user_id == current_user.id
@@ -112,27 +108,22 @@ async def complete_step(
         step.is_completed = True
         step.completed_at = datetime.utcnow()
         
-        # Create a progress record for the study session
         progress = models.Progress(
             goal_id=goal.id,
             date=datetime.utcnow().date(),
-            time_spent_minutes=15,  # Default 15 minutes for step completion
+            time_spent_minutes=15,
             steps_completed=1
         )
         db.add(progress)
         
-        # Update stats for roadmap step completion
         gamification_service = GamificationService(db)
         gamification_service.update_stats_from_activity(current_user.id, "roadmap_step")
         
-        # Check for new achievements after step completion
         new_achievements = gamification_service.check_and_award_achievements(current_user.id)
         level_up_info = None
         
-        # Get level before checking for goal completion
         old_level = gamification_service.get_level_progress(current_user.id)["current_level"]
         
-        # Check if all steps are completed, then mark goal as completed
         all_steps = db.query(models.RoadmapStep).filter(
             models.RoadmapStep.goal_id == goal.id
         ).all()
@@ -143,23 +134,19 @@ async def complete_step(
             goal.updated_at = datetime.utcnow()
             goal_completed = True
             
-            # Create a progress record for goal completion
             goal_progress = models.Progress(
                 goal_id=goal.id,
                 date=datetime.utcnow().date(),
-                time_spent_minutes=30,  # Default 30 minutes for goal completion
+                time_spent_minutes=30,
                 steps_completed=len(all_steps)
             )
             db.add(goal_progress)
             
-            # Update goal completed stats
             gamification_service.update_stats_from_activity(current_user.id, "goal_completed")
             
-            # Check for additional achievements after goal completion
             additional_achievements = gamification_service.check_and_award_achievements(current_user.id)
             new_achievements.extend(additional_achievements)
             
-            # Check for level up
             new_level_progress = gamification_service.get_level_progress(current_user.id)
             new_level = new_level_progress["current_level"]
             
@@ -193,7 +180,6 @@ async def uncomplete_step(
     if not step:
         raise HTTPException(status_code=404, detail="Step not found")
     
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == step.goal_id,
         models.Goal.user_id == current_user.id
@@ -235,7 +221,6 @@ async def delete_roadmap(
     current_user: models.User = Depends(get_current_user)
 ):
     """Delete all roadmap steps for a goal"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -244,7 +229,6 @@ async def delete_roadmap(
         raise HTTPException(status_code=403, detail="Access denied")
     
     try:
-        # Delete all steps for this goal
         steps = db.query(models.RoadmapStep).filter(models.RoadmapStep.goal_id == goal_id).all()
         for step in steps:
             db.delete(step)

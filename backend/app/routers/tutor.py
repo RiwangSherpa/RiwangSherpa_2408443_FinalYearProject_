@@ -129,12 +129,10 @@ async def send_message(
     """Send a message in a tutoring session and get AI response"""
     service = AITutorService(db)
     
-    # Get session for context
     session = service.get_session(session_id, current_user.id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    # Get goal/step context if available
     goal = None
     step = None
     
@@ -216,7 +214,6 @@ async def rate_response(
     """Rate whether an AI response was helpful"""
     service = AITutorService(db)
     
-    # Verify the message belongs to the user's session
     message = db.query(models.ConversationMessage).join(
         models.ConversationSession
     ).filter(

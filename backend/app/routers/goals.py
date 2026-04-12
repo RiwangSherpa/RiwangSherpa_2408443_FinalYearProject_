@@ -21,7 +21,6 @@ async def create_goal(
 ):
     """Create a new learning goal"""
     
-    # Check active goals limit for free users (max 3)
     if current_user.subscription_plan != models.SubscriptionPlan.PRO:
         active_goals_count = db.query(models.Goal).filter(
             models.Goal.user_id == current_user.id,
@@ -76,7 +75,6 @@ async def get_goals_with_roadmaps(
     
     result = []
     for goal in goals:
-        # Get roadmap steps for this goal
         steps = db.query(models.RoadmapStep).filter(
             models.RoadmapStep.goal_id == goal.id
         ).order_by(models.RoadmapStep.step_number).all()
@@ -170,19 +168,14 @@ async def complete_goal(
         db.commit()
         db.refresh(db_goal)
         
-        # Update gamification stats and check achievements
         gamification_service = GamificationService(db)
         
-        # Get level before
         old_level = gamification_service.get_level_progress(current_user.id)["current_level"]
         
-        # Update goal completed stats
         gamification_service.update_stats_from_activity(current_user.id, "goal_completed")
         
-        # Check for new achievements
         new_achievements = gamification_service.check_and_award_achievements(current_user.id)
         
-        # Check for level up
         new_level_progress = gamification_service.get_level_progress(current_user.id)
         level_up_info = None
         if new_level_progress["current_level"] > old_level:

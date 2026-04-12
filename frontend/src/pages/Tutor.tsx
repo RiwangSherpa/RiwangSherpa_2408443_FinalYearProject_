@@ -134,7 +134,6 @@ export default function Tutor() {
     const userMessage = inputMessage.trim()
     setInputMessage('')
     
-    // Optimistically add user message
     const tempUserMessage: Message = {
       id: Date.now(),
       role: 'user',
@@ -156,7 +155,6 @@ export default function Tutor() {
         created_at: aiMessage.created_at
       }])
       
-      // Update session message count
       setActiveSession(prev => prev ? { ...prev, message_count: prev.message_count + 2 } : null)
     } catch (error) {
       console.error('Failed to send message:', error)

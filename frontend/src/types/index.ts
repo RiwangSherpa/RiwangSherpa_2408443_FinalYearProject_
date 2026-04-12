@@ -119,7 +119,6 @@ export interface SubscriptionStatus {
   expires_at?: string
 }
 
-// Analytics Types
 export interface StudyTimeData {
   date: string
   minutes: number

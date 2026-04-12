@@ -45,12 +45,10 @@ export default function Subscription() {
 
   const handleUpgrade = async (plan: string) => {
     if (plan === 'pro' && !isPro) {
-      // Show payment modal for Pro upgrade
       setShowPaymentModal(true)
       return
     }
     
-    // Direct upgrade/downgrade without payment
     setUpgrading(true)
     setError('')
     setSuccess('')
@@ -60,7 +58,6 @@ export default function Subscription() {
       setStatus(response.data.subscription_status)
       if (response.data.success) {
         setSuccess(`Successfully ${plan === 'pro' ? 'upgraded' : 'downgraded'} to ${plan} plan!`)
-        // Refresh user data to update subscription info
         await refreshUser()
       } else {
         setError(response.data.message)
@@ -77,7 +74,6 @@ export default function Subscription() {
     setProcessingPayment(true)
     setError('')
 
-    // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 2000))
 
     try {
@@ -87,7 +83,6 @@ export default function Subscription() {
         setSuccess('Payment successful! Your Pro subscription is now active.')
         setShowPaymentModal(false)
         setPaymentData({ cardNumber: '', expiryDate: '', cvv: '', cardholderName: '' })
-        // Refresh user data to update subscription info
         await refreshUser()
       } else {
         setError(response.data.message)

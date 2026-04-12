@@ -28,12 +28,11 @@ class KnowledgeGraphService:
     ) -> models.KnowledgeNode:
         """Create a new knowledge graph node"""
         
-        # Auto-generate positions if not provided (simple layout)
         if x_position is None or y_position is None:
             existing_count = self.db.query(models.KnowledgeNode).filter(
                 models.KnowledgeNode.goal_id == goal_id
             ).count()
-            angle = (existing_count * 2 * math.pi) / 8  # Distribute in circle
+            angle = (existing_count * 2 * math.pi) / 8
             radius = 150 + (existing_count // 8) * 100
             x_position = 400 + radius * math.cos(angle)
             y_position = 300 + radius * math.sin(angle)
@@ -55,12 +54,12 @@ class KnowledgeGraphService:
     def _get_node_color(self, node_type: str) -> str:
         """Get color for node type"""
         colors = {
-            "concept": "#4F46E5",    # Indigo
-            "skill": "#059669",      # Green
-            "resource": "#DC2626",   # Red
-            "milestone": "#D97706",  # Amber
+            "concept": "#4F46E5",
+            "skill": "#059669",
+            "resource": "#DC2626",
+            "milestone": "#D97706",
         }
-        return colors.get(node_type, "#6B7280")  # Gray default
+        return colors.get(node_type, "#6B7280")
     
     def create_edge(
         self,
@@ -129,13 +128,12 @@ class KnowledgeGraphService:
         if node:
             node.mastery_level = min(1.0, max(0.0, mastery_level))
             
-            # Update color based on mastery
             if node.mastery_level >= 0.8:
-                node.color = "#059669"  # Green - mastered
+                node.color = "#059669"
             elif node.mastery_level >= 0.5:
-                node.color = "#D97706"  # Amber - in progress
+                node.color = "#D97706"
             else:
-                node.color = "#6B7280"  # Gray - not started
+                node.color = "#6B7280"
             
             self.db.commit()
     
@@ -151,7 +149,6 @@ class KnowledgeGraphService:
     
     def get_unlocked_nodes(self, goal_id: int, user_id: int) -> List[models.KnowledgeNode]:
         """Get nodes that should be unlocked based on mastery"""
-        # Get all nodes for this goal
         all_nodes = self.db.query(models.KnowledgeNode).filter(
             models.KnowledgeNode.goal_id == goal_id
         ).all()
@@ -159,17 +156,14 @@ class KnowledgeGraphService:
         unlocked = []
         
         for node in all_nodes:
-            # Check prerequisites (nodes that have edges TO this node)
             prerequisites = self.db.query(models.KnowledgeEdge).filter(
                 models.KnowledgeEdge.target_node_id == node.id,
                 models.KnowledgeEdge.edge_type == "prerequisite"
             ).all()
             
             if not prerequisites:
-                # No prerequisites - automatically unlocked
                 unlocked.append(node)
             else:
-                # Check if all prerequisites are mastered
                 all_mastered = True
                 for prereq in prerequisites:
                     prereq_node = self.db.query(models.KnowledgeNode).filter(
@@ -189,7 +183,6 @@ class KnowledgeGraphService:
         Auto-generate a knowledge graph from roadmap steps.
         Creates nodes from steps and links them sequentially.
         """
-        # Get roadmap steps
         steps = self.db.query(models.RoadmapStep).filter(
             models.RoadmapStep.goal_id == goal_id
         ).order_by(models.RoadmapStep.step_number).all()
@@ -201,7 +194,6 @@ class KnowledgeGraphService:
         previous_node_id = None
         
         for i, step in enumerate(steps):
-            # Create node for this step
             node = self.create_node(
                 goal_id=goal_id,
                 label=step.title,
@@ -212,7 +204,6 @@ class KnowledgeGraphService:
             )
             nodes.append(node)
             
-            # Link to previous node
             if previous_node_id:
                 self.create_edge(
                     goal_id=goal_id,
@@ -231,12 +222,9 @@ class KnowledgeGraphService:
         Get recommended learning path based on current mastery.
         Returns nodes in optimal order to study.
         """
-        # Get unlocked but not mastered nodes
         unlocked = self.get_unlocked_nodes(goal_id, user_id)
         not_mastered = [n for n in unlocked if n.mastery_level < 0.8]
         
-        # Sort by prerequisites (topological-like sort)
-        # Nodes with fewer prerequisites come first
         def prereq_count(node):
             return self.db.query(models.KnowledgeEdge).filter(
                 models.KnowledgeEdge.target_node_id == node.id
@@ -268,7 +256,6 @@ class KnowledgeGraphService:
         mastered = sum(1 for n in nodes if n.mastery_level >= 0.8)
         in_progress = sum(1 for n in nodes if 0.1 <= n.mastery_level < 0.8)
         
-        # Calculate overall mastery
         total_mastery = sum(n.mastery_level for n in nodes)
         avg_mastery = total_mastery / total if total > 0 else 0
         

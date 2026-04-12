@@ -151,9 +151,7 @@ export default function QuizReview() {
           <h2 className="section-heading mb-4">Question Review</h2>
           
           {quiz.questions.map((question, index) => {
-            // In a real review, we'd need the user's selected answer stored
-            // For now, show the correct answer
-            const isCorrect = true // Placeholder - would check user's answer
+            const isCorrect = true
             
             return (
               <motion.div

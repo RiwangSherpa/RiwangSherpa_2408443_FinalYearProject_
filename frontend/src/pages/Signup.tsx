@@ -35,14 +35,12 @@ export default function Signup() {
 
     try {
       await register(email, password, fullName || undefined)
-      // Registration successful, redirect to login page
       navigate('/login', { 
         state: { message: 'Registration successful! Please sign in to continue.' } 
       })
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail || 'Registration failed. Please try again.'
       
-      // Provide more user-friendly error messages
       if (errorMessage.includes('Email already registered')) {
         setError('This email is already registered. Try signing in or use a different email.')
       } else if (errorMessage.includes('password')) {

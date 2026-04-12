@@ -20,7 +20,6 @@ export default function VoiceInput({
   const recognitionRef = useRef<any>(null)
 
   useEffect(() => {
-    // Check if browser supports Speech Recognition
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     
     if (SpeechRecognition) {

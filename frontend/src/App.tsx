@@ -19,11 +19,9 @@ import Productivity from './pages/Productivity'
 import Settings from './pages/Settings'
 import Subscription from './pages/Subscription'
 import ProfileAnalytics from './pages/ProfileAnalytics'
-// New feature pages
 import Tutor from './pages/Tutor'
 import Gamification from './pages/Gamification'
 
-// Default route handler - redirects based on auth status
 function DefaultRoute() {
   const { isAuthenticated, loading } = useAuth()
   

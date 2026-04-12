@@ -11,7 +11,6 @@ from app import models
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def get_password_hash(password: str) -> str:
-    # Truncate password to 72 bytes max for bcrypt
     if len(password.encode('utf-8')) > 72:
         password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
     return pwd_context.hash(password)

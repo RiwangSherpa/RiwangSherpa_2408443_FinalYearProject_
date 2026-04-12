@@ -37,7 +37,6 @@ async def create_progress(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to create progress: {str(e)}")
     
-    # Update study streak (user-specific)
     today = datetime.utcnow().date()
     streak = db.query(models.StudyStreak).filter(
         models.StudyStreak.user_id == current_user.id,
@@ -72,7 +71,6 @@ async def get_progress(
     current_user: models.User = Depends(get_current_user)
 ):
     """Get progress records for a goal"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -92,19 +90,16 @@ async def get_analytics(
     current_user: models.User = Depends(get_current_user)
 ):
     """Get comprehensive analytics"""
-    # Total study time from StudyStreak records (user-specific)
     total_time = db.query(func.sum(models.StudyStreak.study_time_minutes)).filter(
         models.StudyStreak.user_id == current_user.id
     ).scalar() or 0.0
     
-    # Goals stats (user-specific)
     total_goals = db.query(models.Goal).filter(models.Goal.user_id == current_user.id).count()
     completed_goals = db.query(models.Goal).filter(
         models.Goal.user_id == current_user.id,
         models.Goal.is_completed == True
     ).count()
     
-    # Streak calculation (user-specific) - use StudyStreak dates
     streaks = db.query(models.StudyStreak).filter(
         models.StudyStreak.user_id == current_user.id
     ).order_by(models.StudyStreak.date.desc()).all()
@@ -121,7 +116,6 @@ async def get_analytics(
             else:
                 break
     
-    # Quiz scores (user-specific)
     user_goal_ids = [g.id for g in db.query(models.Goal.id).filter(models.Goal.user_id == current_user.id).all()]
     quiz_results = db.query(models.QuizResult).filter(
         models.QuizResult.goal_id.in_(user_goal_ids)
@@ -136,7 +130,6 @@ async def get_analytics(
         total_quizzes = 0
         best_score = 0.0
     
-    # Weak and strong topics
     topic_scores = {}
     for result in quiz_results:
         topic = result.topic
@@ -161,8 +154,8 @@ async def get_analytics(
         average_quiz_score=avg_score,
         total_quizzes=total_quizzes,
         best_quiz_score=best_score,
-        weak_topics=weak_topics[:5],  # Top 5
-        strong_topics=strong_topics[:5]  # Top 5
+        weak_topics=weak_topics[:5],
+        strong_topics=strong_topics[:5]
     )
 
 @router.get("/streak")
@@ -200,7 +193,6 @@ async def record_session(
     today = datetime.utcnow().date()
     minutes = session_data.get("minutes", 0)
     
-    # Update or create streak record for today
     streak = db.query(models.StudyStreak).filter(
         models.StudyStreak.user_id == current_user.id,
         func.date(models.StudyStreak.date) == today
@@ -232,7 +224,6 @@ async def track_study_time(
     minutes = time_data.get("minutes", 0)
     today = datetime.utcnow().date()
     
-    # Update today's streak record with study time
     streak = db.query(models.StudyStreak).filter(
         models.StudyStreak.user_id == current_user.id,
         func.date(models.StudyStreak.date) == today
@@ -269,20 +260,17 @@ async def get_study_history(
     today = datetime.utcnow().date()
     start_date = today - timedelta(days=days)
     
-    # Get all streak records for the user in the date range
     streaks = db.query(models.StudyStreak).filter(
         models.StudyStreak.user_id == current_user.id,
         func.date(models.StudyStreak.date) >= start_date,
         func.date(models.StudyStreak.date) <= today
     ).all()
     
-    # Create a map of date to study time
     streak_map = {}
     for streak in streaks:
         date_str = streak.date.date().isoformat() if isinstance(streak.date, datetime) else str(streak.date)
         streak_map[date_str] = streak.study_time_minutes
     
-    # Build the full history including days with no study time
     history = []
     for i in range(days):
         date = today - timedelta(days=(days - 1 - i))
@@ -306,24 +294,20 @@ async def get_streak_history(
     today = datetime.utcnow().date()
     start_date = today - timedelta(days=days)
     
-    # Get all streak records for the user in the date range
     streaks = db.query(models.StudyStreak).filter(
         models.StudyStreak.user_id == current_user.id,
         func.date(models.StudyStreak.date) >= start_date,
         func.date(models.StudyStreak.date) <= today
     ).all()
     
-    # Create a map of date to study time
     streak_map = {}
     for streak in streaks:
         date_str = streak.date.date().isoformat() if isinstance(streak.date, datetime) else str(streak.date)
         streak_map[date_str] = streak.study_time_minutes
     
-    # Calculate cumulative streak
     history = []
     current_streak = 0
     
-    # First pass: determine which days were studied
     studied_days = set()
     for i in range(days):
         date = today - timedelta(days=(days - 1 - i))
@@ -331,7 +315,6 @@ async def get_streak_history(
         if date_str in streak_map and streak_map[date_str] > 0:
             studied_days.add(date_str)
     
-    # Second pass: build streak history
     for i in range(days):
         date = today - timedelta(days=(days - 1 - i))
         date_str = date.isoformat()

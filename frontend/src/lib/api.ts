@@ -13,7 +13,6 @@ const api = axios.create({
   },
 })
 
-// Add token to requests if available
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token')
@@ -25,7 +24,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Handle 401 errors (unauthorized) and 403 limit errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -33,12 +31,10 @@ api.interceptors.response.use(
       localStorage.removeItem('auth_token')
       window.location.href = '/login'
     }
-    // Pass 403 errors through so components can handle limit checks
     return Promise.reject(error)
   }
 )
 
-// Request interceptor for logging
 api.interceptors.request.use(
   (config) => {
     console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`)
@@ -50,7 +46,6 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -59,7 +54,6 @@ api.interceptors.response.use(
   }
 )
 
-// Goals API
 export const goalsApi = {
   getAll: () => api.get('/api/goals'),
   getById: (id: number) => api.get(`/api/goals/${id}`),
@@ -69,7 +63,6 @@ export const goalsApi = {
   complete: (id: number) => api.patch(`/api/goals/${id}/complete`),
 }
 
-// Roadmaps API
 export const roadmapsApi = {
   generate: (goalId: number, numSteps: number = 10) =>
     api.post('/api/roadmaps/generate', { goal_id: goalId, num_steps: numSteps }),
@@ -80,7 +73,6 @@ export const roadmapsApi = {
   delete: (goalId: number) => api.delete(`/api/roadmaps/goal/${goalId}`),
 }
 
-// Quizzes API
 export const quizzesApi = {
   generate: (goalId: number, topic: string, numQuestions: number = 3, difficulty: string = 'medium') =>
     api.post('/api/quizzes/generate', {
@@ -107,7 +99,6 @@ export const quizzesApi = {
   delete: (quizId: number) => api.delete(`/api/quizzes/${quizId}`),
 }
 
-// Progress API
 export const progressApi = {
   create: (data: any) => api.post('/api/progress', data),
   getByGoal: (goalId: number) => api.get(`/api/progress/goal/${goalId}`),
@@ -119,7 +110,6 @@ export const progressApi = {
   getStreakHistory: (days: number = 30) => api.get('/api/progress/streak-history', { params: { days } }),
 }
 
-// Productivity API
 export const productivityApi = {
   createSession: (data: any) => api.post('/api/productivity/sessions', data),
   completeSession: (sessionId: number) => api.patch(`/api/productivity/sessions/${sessionId}/complete`),
@@ -128,7 +118,6 @@ export const productivityApi = {
   getTips: () => api.get('/api/productivity/tips'),
 }
 
-// AI Explanation API
 export const aiApi = {
   explainStep: (stepId: number, question?: string) =>
     api.post('/api/ai/explain', {
@@ -137,7 +126,6 @@ export const aiApi = {
     }),
 }
 
-// Authentication API
 export const authApi = {
   login: (email: string, password: string) =>
     api.post('/api/auth/login', new URLSearchParams({ username: email, password }), {
@@ -157,7 +145,6 @@ export const authApi = {
     api.post('/api/auth/check-google-account', { email }),
 }
 
-// Subscriptions API
 export const subscriptionsApi = {
   getStatus: () => api.get('/api/subscriptions/status'),
   upgrade: (plan: string, paymentMethod: string = 'demo') =>
@@ -165,7 +152,6 @@ export const subscriptionsApi = {
   getFeatures: () => api.get('/api/subscriptions/features'),
 }
 
-// Analytics API
 export const analyticsApi = {
   getOverview: () => api.get('/api/analytics/overview'),
   getCurrentGoal: () => api.get('/api/analytics/goals/current'),
@@ -174,14 +160,12 @@ export const analyticsApi = {
   getActivity: (limit: number = 10) => api.get('/api/analytics/activity', { params: { limit } }),
 }
 
-// Users API (Settings)
 export const usersApi = {
   getTheme: () => api.get('/api/users/theme'),
   updateTheme: (theme: string) => api.put('/api/users/theme', { theme }),
   getSettings: () => api.get('/api/users/settings'),
 }
 
-// Tutor API
 export const tutorApi = {
   getStats: () => api.get('/api/tutor/stats'),
   getSessions: (activeOnly = false) => api.get(`/api/tutor/sessions?active_only=${activeOnly}`),
@@ -204,7 +188,6 @@ export const tutorApi = {
     }),
 }
 
-// Gamification API
 export const gamificationApi = {
   getProfile: () => api.get('/api/gamification/profile'),
   getAchievements: () => api.get('/api/gamification/achievements'),
@@ -214,7 +197,6 @@ export const gamificationApi = {
   getStats: () => api.get('/api/gamification/stats'),
 }
 
-// Knowledge Graph API
 export const knowledgeGraphApi = {
   getGraph: (goalId: number) => api.get(`/api/knowledge-graph/goals/${goalId}`),
   createNode: (goalId: number, label: string, nodeType: string = 'concept', description?: string) =>
@@ -229,7 +211,6 @@ export const knowledgeGraphApi = {
   getUnlocked: (goalId: number) => api.get(`/api/knowledge-graph/goals/${goalId}/unlocked`),
 }
 
-// Predictive Analytics API
 export const predictionsApi = {
   getVelocity: (days: number = 14) => api.get('/api/predictions/velocity', { params: { days } }),
   getGoalPrediction: (goalId: number) => api.get(`/api/predictions/goal/${goalId}`),
@@ -240,7 +221,6 @@ export const predictionsApi = {
   getAllGoalPredictions: () => api.get('/api/predictions/all-goals'),
 }
 
-// Adaptive Learning API
 export const adaptiveLearningApi = {
   getConcepts: (domain?: string) => api.get('/api/adaptive/concepts', { params: { domain } }),
   createConcept: (name: string, description?: string, domain?: string) =>

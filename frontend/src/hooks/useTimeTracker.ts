@@ -31,15 +31,12 @@ export function useTimeTracker(isAuthenticated: boolean) {
       return;
     }
 
-    // Record session start on login
     progressApi.recordSession(0).catch(console.error);
 
-    // Sync time every minute
     const intervalId = setInterval(() => {
       syncTime();
     }, 60000);
 
-    // Sync on visibility change (when user returns to tab)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         startTimeRef.current = Date.now();
@@ -48,7 +45,6 @@ export function useTimeTracker(isAuthenticated: boolean) {
       }
     };
 
-    // Sync before page unload
     const handleBeforeUnload = () => {
       syncTime();
     };
@@ -60,7 +56,7 @@ export function useTimeTracker(isAuthenticated: boolean) {
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      syncTime(); // Final sync on cleanup
+      syncTime();
     };
   }, [isAuthenticated, syncTime]);
 

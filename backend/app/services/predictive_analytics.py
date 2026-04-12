@@ -27,7 +27,6 @@ class LearningVelocityTracker:
         """
         start_date = datetime.utcnow() - timedelta(days=days)
         
-        # Get daily study hours from progress records
         daily_hours = self.db.query(
             func.date(models.Progress.date).label('date'),
             func.sum(models.Progress.time_spent_minutes).label('minutes')
@@ -36,7 +35,6 @@ class LearningVelocityTracker:
             models.Progress.date >= start_date
         ).group_by(func.date(models.Progress.date)).all()
         
-        # Convert to hours and fill missing days
         hours_by_day = {d.date: float(d.minutes) / 60 for d in daily_hours}
         
         velocities = []
@@ -48,7 +46,6 @@ class LearningVelocityTracker:
                 "hours": round(hours, 2)
             })
         
-        # Calculate trend
         if len(velocities) >= 7:
             recent_avg = sum(v["hours"] for v in velocities[:7]) / 7
             previous_avg = sum(v["hours"] for v in velocities[7:14]) / 7 if len(velocities) >= 14 else recent_avg
@@ -77,7 +74,6 @@ class LearningVelocityTracker:
         if not goal:
             return {"error": "Goal not found"}
         
-        # Get total steps and completed steps
         total_steps = self.db.query(models.RoadmapStep).filter(
             models.RoadmapStep.goal_id == goal_id
         ).count()
@@ -96,8 +92,6 @@ class LearningVelocityTracker:
         
         remaining_steps = total_steps - completed_steps
         
-        # Calculate velocity (steps completed per day)
-        # Look at last 30 days
         start_date = datetime.utcnow() - timedelta(days=30)
         
         recent_completions = self.db.query(models.RoadmapStep).filter(
@@ -106,9 +100,8 @@ class LearningVelocityTracker:
             models.RoadmapStep.completed_at >= start_date
         ).count()
         
-        steps_per_day = recent_completions / 30 if recent_completions > 0 else 0.1  # Minimum assumption
+        steps_per_day = recent_completions / 30 if recent_completions > 0 else 0.1
         
-        # Predict days to completion
         if steps_per_day > 0:
             days_to_completion = remaining_steps / steps_per_day
             predicted_completion = datetime.utcnow() + timedelta(days=int(days_to_completion))
@@ -116,7 +109,6 @@ class LearningVelocityTracker:
             days_to_completion = float('inf')
             predicted_completion = None
         
-        # Calculate confidence based on consistency
         if recent_completions >= 5:
             confidence = "high"
         elif recent_completions >= 2:
@@ -124,7 +116,6 @@ class LearningVelocityTracker:
         else:
             confidence = "low"
         
-        # Check if predicted date exceeds target date
         at_risk = False
         if goal.target_date and predicted_completion:
             if predicted_completion > goal.target_date:
@@ -200,7 +191,6 @@ class LearningVelocityTracker:
         Returns:
             Dict with peak productivity hours and recommendations
         """
-        # Get all study sessions with timestamps
         sessions = self.db.query(
             models.ProductivitySession.started_at,
             models.ProductivitySession.was_completed,
@@ -216,7 +206,6 @@ class LearningVelocityTracker:
                 "recommendation": "Start tracking study sessions to get personalized recommendations"
             }
         
-        # Analyze by hour of day
         hourly_completions = {}
         for session in sessions:
             hour = session.started_at.hour
@@ -225,7 +214,6 @@ class LearningVelocityTracker:
             hourly_completions[hour]["count"] += 1
             hourly_completions[hour]["total_duration"] += session.duration_minutes
         
-        # Find peak hours (top 3)
         sorted_hours = sorted(
             hourly_completions.items(),
             key=lambda x: x[1]["count"],
@@ -241,7 +229,6 @@ class LearningVelocityTracker:
             for h in sorted_hours
         ]
         
-        # Format for display
         hour_labels = {
             h["hour"]: f"{h['hour']}:00 - {h['sessions']} sessions"
             for h in optimal_hours
@@ -260,7 +247,6 @@ class LearningVelocityTracker:
         Returns:
             Dict with efficiency score and breakdown
         """
-        # Get quiz performance vs time spent
         quiz_results = self.db.query(models.QuizResult).join(
             models.Goal
         ).filter(
@@ -272,18 +258,15 @@ class LearningVelocityTracker:
         
         avg_quiz_score = sum(q.score for q in quiz_results) / len(quiz_results)
         
-        # Get total study time
         total_study = self.db.query(func.sum(models.Progress.time_spent_minutes)).join(
             models.Goal
         ).filter(
             models.Goal.user_id == user_id
         ).scalar() or 0
         
-        # Calculate efficiency (score per hour)
         hours_studied = total_study / 60
         efficiency = avg_quiz_score / hours_studied if hours_studied > 0 else 0
         
-        # Categorize efficiency
         if efficiency >= 20:
             category = "excellent"
         elif efficiency >= 15:

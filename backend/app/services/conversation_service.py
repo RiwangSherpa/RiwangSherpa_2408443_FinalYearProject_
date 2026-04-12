@@ -19,7 +19,7 @@ class ConversationContextManager:
     conversational coherence.
     """
     
-    MAX_CONTEXT_MESSAGES = 10  # Keep last N messages in full context
+    MAX_CONTEXT_MESSAGES = 10
     
     def __init__(self):
         self.summary_prompt = """Summarize the following conversation between a student and a tutor.
@@ -37,20 +37,16 @@ Keep the summary concise (2-3 sentences) but informative enough to continue the 
         Returns recent messages + summary of older conversation if needed.
         """
         if len(messages) <= self.MAX_CONTEXT_MESSAGES:
-            # Return all messages if under limit
             return [
                 {"role": msg.role, "content": msg.content}
                 for msg in messages
             ]
         
-        # Keep first message (system/intro) and recent messages
         context = []
         
-        # Add system message if exists
         if messages and messages[0].role == "system":
             context.append({"role": "system", "content": messages[0].content})
         
-        # Add recent messages
         recent_messages = messages[-self.MAX_CONTEXT_MESSAGES:]
         for msg in recent_messages:
             context.append({"role": msg.role, "content": msg.content})
@@ -62,14 +58,11 @@ Keep the summary concise (2-3 sentences) but informative enough to continue the 
         if len(messages) < 5:
             return ""
         
-        # Create conversation text for summarization
         conversation_text = "\n".join([
             f"{msg.role}: {msg.content[:200]}..." if len(msg.content) > 200 else f"{msg.role}: {msg.content}"
             for msg in messages
         ])
         
-        # This would call AI for summarization
-        # For now, return a basic summary
         return f"Conversation with {len(messages)} messages covering learning topics."
 
 
@@ -143,7 +136,6 @@ class AITutorService:
         if not session:
             raise ValueError("Session not found")
         
-        # Add user message
         user_message = models.ConversationMessage(
             session_id=session_id,
             role="user",
@@ -151,38 +143,29 @@ class AITutorService:
         )
         self.db.add(user_message)
         
-        # Get conversation history
         history = session.messages
         
-        # Create context window
         context_messages = self.context_manager.create_context_window(history)
         
-        # Build system prompt with context
         system_prompt = self._build_system_prompt(context_goal, context_step)
         
-        # Prepare messages for AI
         ai_messages = [{"role": "system", "content": system_prompt}]
         ai_messages.extend(context_messages)
         ai_messages.append({"role": "user", "content": content})
         
-        # Get AI response
         try:
-            # Call AI service
             ai_response_content = await self._call_ai_tutor(ai_messages)
             
-            # Store AI response
             ai_message = models.ConversationMessage(
                 session_id=session_id,
                 role="assistant",
                 content=ai_response_content,
-                model_used="dolphin3:8b"  # Track which model was used
+                model_used="dolphin3:8b"
             )
             self.db.add(ai_message)
             
-            # Update session
             session.updated_at = datetime.utcnow()
             
-            # Update context summary if conversation is getting long
             if len(history) > 15 and not session.context_summary:
                 session.context_summary = self.context_manager.generate_context_summary(history)
             
@@ -220,7 +203,6 @@ Do not:
 - Be condescending or overly technical
 - Go off-topic from the learning goal"""
         
-        # Add context if available
         context_parts = []
         
         if goal:
@@ -240,15 +222,12 @@ Do not:
     
     async def _call_ai_tutor(self, messages: List[Dict[str, str]]) -> str:
         """Call AI service with tutoring messages"""
-        # Use the ai_service but with custom prompt
-        # This is a simplified version - in production, you'd want streaming
         
         prompt_text = "\n".join([
             f"{msg['role'].upper()}: {msg['content']}"
             for msg in messages
         ])
         
-        # Call the existing AI service
         response = await ai_service._call_ollama(prompt_text, temperature=0.7)
         
         return response

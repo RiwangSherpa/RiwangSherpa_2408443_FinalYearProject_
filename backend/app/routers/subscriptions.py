@@ -20,12 +20,10 @@ def simulate_payment(payment_method: str, plan: str) -> tuple[bool, str]:
     Simulate payment processing (DEMO ONLY)
     Returns: (success: bool, message: str)
     """
-    # Demo payment logic
     if payment_method == "demo_fail":
         return False, "Payment failed: Insufficient funds (demo)"
     
     if payment_method == "demo":
-        # Simulate successful payment
         logger.info(f"Demo payment successful for plan: {plan}")
         return True, "Payment processed successfully (demo)"
     
@@ -56,7 +54,6 @@ async def upgrade_subscription(
 ):
     """Upgrade subscription (DEMO PAYMENT)"""
     if payment_data.plan == "free":
-        # Downgrade to free
         try:
             current_user.subscription_plan = models.SubscriptionPlan.FREE
             current_user.subscription_expires_at = None
@@ -80,7 +77,6 @@ async def upgrade_subscription(
             )
     
     if payment_data.plan == "pro":
-        # Simulate payment
         success, message = simulate_payment(payment_data.payment_method, "pro")
         
         if not success:
@@ -94,10 +90,8 @@ async def upgrade_subscription(
                 )
             )
         
-        # Upgrade to Pro
         try:
             current_user.subscription_plan = models.SubscriptionPlan.PRO
-            # Set expiration to 30 days from now (demo)
             current_user.subscription_expires_at = datetime.utcnow() + timedelta(days=30)
             db.commit()
             

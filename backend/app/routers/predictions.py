@@ -35,7 +35,6 @@ async def predict_goal_completion(
     current_user: models.User = Depends(get_current_user)
 ):
     """Predict when a goal will be completed"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -109,7 +108,6 @@ async def get_all_goal_predictions(
     """Get predictions for all active goals"""
     service = LearningVelocityTracker(db)
     
-    # Get all active goals
     goals = db.query(models.Goal).filter(
         models.Goal.user_id == current_user.id,
         models.Goal.is_completed == False

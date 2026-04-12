@@ -11,7 +11,6 @@ interface QuizScoreLineChartProps {
 }
 
 export default function QuizScoreLineChart({ data }: QuizScoreLineChartProps) {
-  // Format data for chart
   const chartData = data.map((item) => ({
     date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     score: Math.round(item.score),

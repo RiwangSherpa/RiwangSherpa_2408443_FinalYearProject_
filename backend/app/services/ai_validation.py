@@ -41,13 +41,11 @@ class RoadmapStepSchema(BaseModel):
 class AIValidator:
     """Validator for AI-generated content"""
     
-    # Content safety patterns
     INAPPROPRIATE_PATTERNS = [
         r'\b(hate|kill|murder|terrorist|bomb|weapon)\b',
         r'\b(hack|exploit|vulnerability|breach)\b',
     ]
     
-    # Code injection patterns
     CODE_INJECTION_PATTERNS = [
         r'<script[^>]*>.*?</script>',
         r'javascript:',
@@ -65,7 +63,6 @@ class AIValidator:
         """
         text_lower = text.lower()
         
-        # Check inappropriate patterns
         for pattern in cls.INAPPROPRIATE_PATTERNS:
             if re.search(pattern, text_lower, re.IGNORECASE):
                 return {
@@ -74,7 +71,6 @@ class AIValidator:
                     "pattern_matched": pattern
                 }
         
-        # Check code injection
         for pattern in cls.CODE_INJECTION_PATTERNS:
             if re.search(pattern, text, re.IGNORECASE):
                 return {
@@ -96,7 +92,6 @@ class AIValidator:
         errors = []
         validated_questions = []
         
-        # Ensure data is a list
         if not isinstance(data, list):
             if isinstance(data, dict) and "questions" in data:
                 data = data["questions"]
@@ -109,10 +104,8 @@ class AIValidator:
         
         for i, question_data in enumerate(data):
             try:
-                # Validate schema
                 validated = QuizQuestionSchema(**question_data)
                 
-                # Additional validations
                 if len(validated.options) != 4:
                     errors.append(f"Question {i+1}: Must have exactly 4 options")
                     continue
@@ -121,7 +114,6 @@ class AIValidator:
                     errors.append(f"Question {i+1}: Correct answer index out of range")
                     continue
                 
-                # Check content safety
                 safety = cls.validate_content_safety(validated.question)
                 if not safety["is_safe"]:
                     errors.append(f"Question {i+1}: {safety['reason']}")
@@ -153,7 +145,6 @@ class AIValidator:
         errors = []
         validated_steps = []
         
-        # Ensure data is a list
         if not isinstance(data, list):
             if isinstance(data, dict) and "steps" in data:
                 data = data["steps"]
@@ -166,9 +157,7 @@ class AIValidator:
         
         for i, step_data in enumerate(data):
             try:
-                # Handle both dict formats
                 if isinstance(step_data, dict):
-                    # Normalize field names
                     normalized = {
                         "step_number": step_data.get("step_number", i + 1),
                         "title": step_data.get("title", "")[:120],
@@ -177,10 +166,8 @@ class AIValidator:
                         "ai_explanation": step_data.get("ai_explanation")
                     }
                     
-                    # Validate schema
                     validated = RoadmapStepSchema(**normalized)
                     
-                    # Content safety check
                     safety = cls.validate_content_safety(validated.title + " " + validated.description)
                     if not safety["is_safe"]:
                         errors.append(f"Step {i+1}: {safety['reason']}")
@@ -207,7 +194,7 @@ class AIResponseCacheService:
     
     def __init__(self, db: Session):
         self.db = db
-        self.cache_ttl_hours = 24  # Cache for 24 hours
+        self.cache_ttl_hours = 24
     
     def _generate_cache_key(self, prompt: str, response_type: str) -> str:
         """Generate a cache key from prompt and type"""
@@ -227,11 +214,9 @@ class AIResponseCacheService:
         if not cached:
             return None
         
-        # Check expiration
         if cached.expires_at and datetime.utcnow() > cached.expires_at:
             return None
         
-        # Update access stats
         cached.access_count += 1
         cached.last_accessed_at = datetime.utcnow()
         self.db.commit()
@@ -247,18 +232,15 @@ class AIResponseCacheService:
         
         expires_at = datetime.utcnow() + timedelta(hours=self.cache_ttl_hours)
         
-        # Check if entry exists
         existing = self.db.query(models.AIResponseCache).filter(
             models.AIResponseCache.cache_key == cache_key
         ).first()
         
         if existing:
-            # Update existing
             existing.response_data = response_data
             existing.expires_at = expires_at
             existing.last_accessed_at = datetime.utcnow()
         else:
-            # Create new entry
             cache_entry = models.AIResponseCache(
                 cache_key=cache_key,
                 prompt_hash=prompt_hash,
@@ -299,17 +281,13 @@ class AIGuardrailsService:
         Sanitize user input before sending to AI.
         Prevents prompt injection attacks.
         """
-        # Remove attempts to inject system prompts
         sanitized = re.sub(r'\b(system|assistant|user)\s*[:\n]', '[REDACTED]', 
                           prompt, flags=re.IGNORECASE)
         
-        # Remove control characters
         sanitized = re.sub(r'[\x00-\x1F\x7F]', '', sanitized)
         
-        # Escape special characters
         sanitized = sanitized.replace('"', "'")
         
-        # Limit length
         return sanitized[:4000]
     
     def validate_ai_response(self, response_type: str, data: Any) -> Dict[str, Any]:
@@ -326,7 +304,6 @@ class AIGuardrailsService:
             return self.validator.validate_roadmap_steps(data)
         
         elif response_type == "explanation":
-            # For explanations, mainly check content safety
             if isinstance(data, str):
                 safety = self.validator.validate_content_safety(data)
                 return {
@@ -346,7 +323,6 @@ class AIGuardrailsService:
         Returns:
             Dict with success, data, and error information
         """
-        # Check cache first (unless force refresh)
         if not force_refresh:
             cached = self.cache.get_cached_response(prompt, response_type)
             if cached:
@@ -357,12 +333,9 @@ class AIGuardrailsService:
                     "model": "cached"
                 }
         
-        # Sanitize prompt
         sanitized_prompt = self.sanitize_prompt(prompt)
         
         try:
-            # Call AI (this would integrate with ai_service)
-            # For now, return placeholder indicating this needs integration
             return {
                 "success": False,
                 "error": "AI call integration required - integrate with ai_service",
@@ -398,10 +371,9 @@ class AIGuardrailsService:
             "by_type": {t: c for t, c in by_type},
             "total_cache_accesses": int(total_accesses),
             "expired_entries": expired,
-            "cache_hit_rate": "N/A"  # Would need to track requests vs cache hits
+            "cache_hit_rate": "N/A"
         }
 
 
-# Import needed for the cache service
 import hashlib
 from sqlalchemy import func

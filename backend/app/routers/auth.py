@@ -28,9 +28,6 @@ router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-# -------------------------------------------------
-# Dependencies
-# -------------------------------------------------
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -64,9 +61,6 @@ def get_current_user(
 
     return user
 
-# -------------------------------------------------
-# Routes
-# -------------------------------------------------
 
 @router.post(
     "/register",
@@ -157,7 +151,6 @@ async def forgot_password(
 
     user = get_user_by_email(db, request.email)
 
-    # Always return success (avoid email enumeration)
     if not user:
         logger.info(
             "Password reset requested for non-existent email: %s",
@@ -169,9 +162,7 @@ async def forgot_password(
 
     reset_token = create_password_reset_token_for_user(db, user)
 
-    # Log token generation (for development only - remove in production)
     logger.info("Password reset token generated for %s", user.email)
-    # In production, send email instead of logging token
 
     return {
         "message": "If the email exists, a password reset link has been sent."

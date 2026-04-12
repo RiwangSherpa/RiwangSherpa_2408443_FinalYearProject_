@@ -23,7 +23,6 @@ async def generate_quiz(
 ):
     """Generate quiz questions using AI"""
     
-    # Check daily limit for free users (3 per day)
     if current_user.subscription_plan != models.SubscriptionPlan.PRO:
         today = date.today()
         usage = db.query(models.UserDailyUsage).filter(
@@ -47,7 +46,6 @@ async def generate_quiz(
         raise HTTPException(status_code=404, detail="Goal not found")
     
     try:
-        # Call AI service
         ai_result = await ai_service.generate_quiz(
             goal_title=goal.title,
             topic=request.topic,
@@ -59,7 +57,6 @@ async def generate_quiz(
             schemas.QuizQuestion(**q) for q in ai_result["questions"]
         ]
         
-        # Track usage for free users
         if current_user.subscription_plan != models.SubscriptionPlan.PRO:
             await track_usage(current_user.id, "quiz", db)
         
@@ -94,7 +91,6 @@ async def submit_quiz(
             detail="Goal ID is required"
         )
     
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -102,7 +98,6 @@ async def submit_quiz(
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
     
-    # If topic is empty, use goal title
     if not topic:
         topic = goal.title
     
@@ -131,7 +126,6 @@ async def submit_quiz(
     
     score = (correct_count / len(questions)) * 100 if questions else 0
     
-    # Save quiz result to database and update gamification
     new_achievements = []
     level_up_info = None
     try:
@@ -146,39 +140,32 @@ async def submit_quiz(
             )
             db.add(quiz_result)
             
-            # Create a progress record for quiz completion
             quiz_progress = models.Progress(
                 goal_id=goal_id,
                 date=datetime.utcnow().date(),
-                time_spent_minutes=len(questions) * 2,  # Estimate 2 minutes per question
+                time_spent_minutes=len(questions) * 2,
                 steps_completed=0
             )
             db.add(quiz_progress)
             
             db.commit()
             
-            # Update gamification stats and check achievements
             gamification_service = GamificationService(db)
             
-            # Get level before
             old_level = gamification_service.get_level_progress(current_user.id)["current_level"]
             
-            # Update quiz stats
             gamification_service.update_stats_from_activity(
                 current_user.id, 
                 "quiz_completed", 
-                len(questions)  # value is questions answered
+                len(questions)
             )
             
-            # Check for perfect quiz (100% score)
             is_perfect = score == 100.0 and correct_count == len(questions)
             if is_perfect:
                 gamification_service.update_stats_from_activity(current_user.id, "perfect_quiz")
             
-            # Check for new achievements
             new_achievements = gamification_service.check_and_award_achievements(current_user.id)
             
-            # Check for level up
             new_level_progress = gamification_service.get_level_progress(current_user.id)
             if new_level_progress["current_level"] > old_level:
                 level_up_info = {
@@ -205,7 +192,6 @@ async def get_quiz_results(
     current_user: models.User = Depends(get_current_user)
 ):
     """Get quiz results for a goal"""
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == goal_id,
         models.Goal.user_id == current_user.id
@@ -261,12 +247,10 @@ async def get_quiz_by_id(
     current_user: models.User = Depends(get_current_user)
 ):
     """Get a single quiz result with full details for review"""
-    # Get the quiz
     quiz = db.query(models.QuizResult).filter(models.QuizResult.id == quiz_id).first()
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
     
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == quiz.goal_id,
         models.Goal.user_id == current_user.id
@@ -292,12 +276,10 @@ async def delete_quiz(
     current_user: models.User = Depends(get_current_user)
 ):
     """Delete a quiz result"""
-    # Verify quiz belongs to user through goal
     quiz = db.query(models.QuizResult).filter(models.QuizResult.id == quiz_id).first()
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
     
-    # Verify goal belongs to user
     goal = db.query(models.Goal).filter(
         models.Goal.id == quiz.goal_id,
         models.Goal.user_id == current_user.id

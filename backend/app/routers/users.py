@@ -17,12 +17,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# -------------------------------------------------
-# Settings Schemas
-# -------------------------------------------------
 
 class ThemeUpdate(BaseModel):
-    theme: str  # "light" | "dark"
+    theme: str
 
 class ThemeResponse(BaseModel):
     theme: str
@@ -32,9 +29,6 @@ class UserSettings(BaseModel):
     full_name: Optional[str]
     subscription_plan: str
 
-# -------------------------------------------------
-# API Endpoints
-# -------------------------------------------------
 
 @router.get("/theme", response_model=ThemeResponse)
 async def get_theme_preference(

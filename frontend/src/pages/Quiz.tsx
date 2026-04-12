@@ -62,7 +62,6 @@ export default function Quiz() {
       ])
       console.log('[Quiz] Quizzes fetched:', quizzesRes.data?.length || 0, 'quizzes')
       setSavedQuizzes(quizzesRes.data || [])
-      // Create a map of goal_id to goal for quick lookup
       const goalsMapData = goalsRes.data.reduce((acc: Record<number, Goal>, g: Goal) => {
         acc[g.id] = g
         return acc
@@ -102,7 +101,7 @@ export default function Quiz() {
       const response = await quizzesApi.generate(
         parseInt(goalId),
         quizTopic,
-        10, // Generate up to 10 questions
+        10,
         difficulty
       )
       setQuestions(response.data.questions)
@@ -143,16 +142,13 @@ export default function Quiz() {
         quizTopic
       )
       setResult(response.data)
-      // Capture achievements and level up info
       if (response.data.new_achievements?.length > 0) {
         setNewAchievements(response.data.new_achievements)
       }
       if (response.data.level_up) {
         setLevelUpInfo(response.data.level_up)
       }
-      // Always refresh saved quizzes list after submission
       loadSavedQuizzes()
-      // Refresh activities to show recent quiz action
       refreshActivities()
     } catch (error) {
       console.error('Failed to submit quiz:', error)
@@ -188,7 +184,6 @@ export default function Quiz() {
     }
   }
 
-  // Main quiz page (no goal selected)
   if (!goalId) {
     return (
       <div className="bg-neutral-50 dark:bg-dark-bg-primary min-h-screen px-6 py-8 transition-colors duration-300">

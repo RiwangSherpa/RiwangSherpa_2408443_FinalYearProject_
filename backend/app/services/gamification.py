@@ -17,10 +17,9 @@ class AchievementEngine:
     """
     
     DEFAULT_ACHIEVEMENTS = [
-        # Study & Streak Achievements
         {"name": "Getting Started", "description": "Spend 10 minutes studying", 
          "category": "study", "difficulty": "bronze", "xp": 20,
-         "trigger": {"type": "total_study_hours", "threshold": 0.17}},  # 10 minutes
+         "trigger": {"type": "total_study_hours", "threshold": 0.17}},
         
         {"name": "First Steps", "description": "Complete your first study session", 
          "category": "study", "difficulty": "bronze", "xp": 50,
@@ -38,7 +37,6 @@ class AchievementEngine:
          "category": "streak", "difficulty": "silver", "xp": 300,
          "trigger": {"type": "streak_days", "threshold": 7}},
         
-        # Quiz Achievements
         {"name": "First Quiz Attempt", "description": "Attempt any quiz", 
          "category": "quiz", "difficulty": "bronze", "xp": 30,
          "trigger": {"type": "quizzes_completed", "threshold": 1}},
@@ -55,7 +53,6 @@ class AchievementEngine:
          "category": "quiz", "difficulty": "gold", "xp": 200,
          "trigger": {"type": "perfect_quiz", "threshold": 1}},
         
-        # Goal & Roadmap Achievements
         {"name": "First Step", "description": "Complete your first roadmap step", 
          "category": "roadmap", "difficulty": "bronze", "xp": 30,
          "trigger": {"type": "roadmap_step", "threshold": 1}},
@@ -94,17 +91,13 @@ class AchievementEngine:
         existing_achievements = {a.name: a for a in self.db.query(models.Achievement).all()}
         default_names = {ach["name"] for ach in self.DEFAULT_ACHIEVEMENTS}
         
-        # Remove achievements that are no longer in the default list
         for name, achievement in existing_achievements.items():
             if name not in default_names:
-                # Delete user achievements first (foreign key constraint)
                 self.db.query(models.UserAchievement).filter(
                     models.UserAchievement.achievement_id == achievement.id
                 ).delete()
-                # Delete the achievement
                 self.db.delete(achievement)
         
-        # Add new default achievements
         for ach_data in self.DEFAULT_ACHIEVEMENTS:
             if ach_data["name"] not in existing_achievements:
                 achievement = models.Achievement(
@@ -124,7 +117,6 @@ class AchievementEngine:
 class GamificationService:
     """Service for managing gamification features"""
     
-    # XP required for each level (exponential growth)
     BASE_XP = 100
     XP_MULTIPLIER = 1.5
     
@@ -158,7 +150,6 @@ class GamificationService:
         old_level = stats.current_level
         stats.total_xp += amount
         
-        # Check for level up
         new_level = self._calculate_level(stats.total_xp)
         leveled_up = new_level > old_level
         stats.current_level = new_level
@@ -197,7 +188,6 @@ class GamificationService:
         """Get current level progress for user"""
         stats = self.get_or_create_user_stats(user_id)
         
-        # Calculate XP within current level
         xp_for_current = 0
         for level in range(1, stats.current_level):
             xp_for_current += self.get_xp_for_next_level(level)
@@ -225,10 +215,8 @@ class GamificationService:
         new_achievements = []
         stats = self.get_or_create_user_stats(user_id)
         
-        # Get all achievements
         all_achievements = self.db.query(models.Achievement).all()
         
-        # Get user's existing achievements
         earned_ids = {
             ua.achievement_id 
             for ua in self.db.query(models.UserAchievement).filter(
@@ -240,16 +228,13 @@ class GamificationService:
             if achievement.id in earned_ids:
                 continue
             
-            # Check if criteria met
             if self._check_achievement_criteria(user_id, stats, achievement.trigger_condition):
-                # Award achievement
                 user_achievement = models.UserAchievement(
                     user_id=user_id,
                     achievement_id=achievement.id
                 )
                 self.db.add(user_achievement)
                 
-                # Award XP
                 self.add_xp(user_id, achievement.xp_reward, f"achievement_{achievement.name}")
                 
                 new_achievements.append({
@@ -294,7 +279,6 @@ class GamificationService:
             return stats.roadmap_steps_completed >= threshold
         
         elif trigger_type == "daily_steps":
-            # Check if user completed 2+ steps in a single day
             from datetime import datetime, timedelta
             today = datetime.utcnow().date()
             steps_today = self.db.query(models.RoadmapStep).join(models.Goal).filter(
@@ -305,7 +289,6 @@ class GamificationService:
             return steps_today >= threshold
         
         elif trigger_type == "goal_50_percent":
-            # Check if any goal has 50%+ completion
             goals = self.db.query(models.Goal).filter(
                 models.Goal.user_id == user_id
             ).all()
@@ -332,11 +315,11 @@ class GamificationService:
         
         if activity_type == "study_session":
             stats.total_study_sessions += 1
-            stats.total_study_hours += value  # value is hours
+            stats.total_study_hours += value
         
         elif activity_type == "quiz_completed":
             stats.total_quizzes_taken += 1
-            stats.total_questions_answered += int(value)  # value is questions answered
+            stats.total_questions_answered += int(value)
         
         elif activity_type == "perfect_quiz":
             stats.perfect_quiz_count += 1
@@ -351,14 +334,12 @@ class GamificationService:
     
     def get_user_achievements(self, user_id: int) -> Dict:
         """Get all achievements for a user"""
-        # Get earned achievements
         earned = self.db.query(models.UserAchievement, models.Achievement).join(
             models.Achievement
         ).filter(
             models.UserAchievement.user_id == user_id
         ).order_by(models.UserAchievement.earned_at.desc()).all()
         
-        # Get locked achievements
         earned_ids = {ua.achievement_id for ua, _ in earned}
         locked = self.db.query(models.Achievement).filter(
             ~models.Achievement.id.in_(earned_ids) if earned_ids else True

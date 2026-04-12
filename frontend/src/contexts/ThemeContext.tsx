@@ -19,7 +19,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light')
   const [isInitialized, setIsInitialized] = useState(false)
 
-  // Apply theme to <html> element
   const applyThemeClass = (nextTheme: Theme) => {
     const root = document.documentElement
     if (nextTheme === 'dark') {
@@ -29,19 +28,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Initialize theme from system preference first, then localStorage, then backend
   useEffect(() => {
     const getInitialTheme = (): Theme => {
-      // Check system preference first
       if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null
-        // Only use system preference if user hasn't explicitly set a preference
         if (!stored) return 'dark'
       }
       
-      // Fall back to localStorage preference
       const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null
-      // Default to light mode, only use dark mode if explicitly set
       return stored === 'dark' ? 'dark' : 'light'
     }
     
@@ -56,7 +50,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyThemeClass(nextTheme)
     localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
 
-    // Persist to backend when authenticated
     if (isAuthenticated) {
       usersApi
         .updateTheme(nextTheme)
@@ -64,14 +57,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Sync with backend when auth state changes
   useEffect(() => {
     const loadFromBackend = async () => {
       if (!isAuthenticated) return
       try {
         const res = await usersApi.getSettings()
         const backendTheme = res.data.theme_preference as Theme | undefined
-        // Only use backend theme if explicitly set (not null/undefined)
         if (backendTheme === 'dark') {
           setThemeState('dark')
           applyThemeClass('dark')
@@ -81,7 +72,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           applyThemeClass('light')
           localStorage.setItem(THEME_STORAGE_KEY, 'light')
         }
-        // If backendTheme is null/undefined, keep current localStorage setting
       } catch (error) {
         console.error('Failed to load user settings for theme:', error)
       }

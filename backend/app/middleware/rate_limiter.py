@@ -21,7 +21,7 @@ class RateLimitBucket:
     def __init__(self, tokens: int, refill_rate: float):
         self.tokens = float(tokens)
         self.max_tokens = float(tokens)
-        self.refill_rate = refill_rate  # tokens per second
+        self.refill_rate = refill_rate
         self.last_refill = time.time()
     
     def consume(self, tokens: float = 1.0) -> bool:
@@ -45,27 +45,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     
     def __init__(self, app):
         super().__init__(app)
-        # General API rate limits
         self.general_buckets: Dict[str, RateLimitBucket] = {}
         self.ai_buckets: Dict[str, RateLimitBucket] = {}
         
-        # Rate limits from settings
         self.general_limit = settings.RATE_LIMIT_REQUESTS_PER_MINUTE
         self.ai_limit = settings.RATE_LIMIT_AI_REQUESTS_PER_HOUR
         self.ai_limit_free = settings.RATE_LIMIT_AI_REQUESTS_PER_HOUR_FREE
     
     async def dispatch(self, request: Request, call_next):
-        # Skip rate limiting for health checks
         if request.url.path == "/api/health":
             return await call_next(request)
         
-        # Get client identifier (prefer user ID from token, fallback to IP)
         client_id = await self._get_client_id(request)
         
-        # Check if this is an AI endpoint
         is_ai_endpoint = self._is_ai_endpoint(request)
         
-        # Apply appropriate rate limit
         if is_ai_endpoint:
             allowed = self._check_ai_rate_limit(client_id)
             limit = self.ai_limit
@@ -84,10 +78,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 headers={"Retry-After": "60" if is_ai_endpoint else "1"}
             )
         
-        # Process request
         response: Response = await call_next(request)
         
-        # Add rate limit headers
         bucket = self.ai_buckets.get(client_id) if is_ai_endpoint else self.general_buckets.get(client_id)
         if bucket:
             remaining = int(bucket.tokens)
@@ -99,16 +91,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def _get_client_id(self, request: Request) -> str:
         """Get client identifier from token or IP"""
         try:
-            # Try to get user from token
             auth_header = request.headers.get("Authorization", "")
             if auth_header.startswith("Bearer "):
                 token = auth_header.replace("Bearer ", "")
-                # We can't easily decode here without DB, so use token hash
                 return f"token_{hash(token) % 1000000}"
         except:
             pass
         
-        # Fallback to IP address
         client_host = request.client.host if request.client else "unknown"
         return f"ip_{client_host}"
     
@@ -122,7 +111,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if client_id not in self.general_buckets:
             self.general_buckets[client_id] = RateLimitBucket(
                 tokens=self.general_limit,
-                refill_rate=self.general_limit / 60.0  # per second
+                refill_rate=self.general_limit / 60.0
             )
         return self.general_buckets[client_id].consume(1.0)
     
@@ -131,6 +120,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if client_id not in self.ai_buckets:
             self.ai_buckets[client_id] = RateLimitBucket(
                 tokens=self.ai_limit,
-                refill_rate=self.ai_limit / 3600.0  # per second
+                refill_rate=self.ai_limit / 3600.0
             )
         return self.ai_buckets[client_id].consume(1.0)

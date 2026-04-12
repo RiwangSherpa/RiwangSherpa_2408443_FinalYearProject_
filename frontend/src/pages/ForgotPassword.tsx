@@ -35,7 +35,6 @@ export default function ForgotPassword() {
     setEmail(newEmail)
     setError('')
     
-    // Debounce check for Google account
     if (newEmail.includes('@') && newEmail.includes('.')) {
       const timeoutId = setTimeout(() => {
         checkGoogleAccount(newEmail)
@@ -53,10 +52,9 @@ export default function ForgotPassword() {
     e.preventDefault()
     setError('')
     
-    // Check if Google account first
     await checkGoogleAccount(email)
     if (isGoogleAccount) {
-      return // Don't proceed with password reset for Google accounts
+      return
     }
     
     setLoading(true)

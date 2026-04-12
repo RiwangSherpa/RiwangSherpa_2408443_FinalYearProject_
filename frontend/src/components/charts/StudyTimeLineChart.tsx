@@ -11,7 +11,6 @@ export default function StudyTimeLineChart({ data }: StudyTimeLineChartProps) {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
   
-  // Format data for chart
   const chartData = data.map((item) => ({
     date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     minutes: Math.round(item.minutes),

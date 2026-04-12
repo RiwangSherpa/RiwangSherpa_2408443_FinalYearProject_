@@ -34,10 +34,8 @@ export default function Home() {
     ? Math.round((analytics.completed_goals / analytics.total_goals) * 100)
     : 0
 
-  // Show recent goals in Library (up to 6 goals)
   const recentGoals = goals.slice(0, 6)
 
-  // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 12) return 'Good morning'
