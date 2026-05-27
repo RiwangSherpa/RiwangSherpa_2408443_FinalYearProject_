@@ -4,7 +4,7 @@ Compatible with FastAPI >= 0.110 and Pydantic v2
 """
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -247,3 +247,277 @@ class PaymentResponse(BaseModel):
     success: bool
     message: str
     subscription_status: SubscriptionStatus
+
+
+class NoteCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    content: Optional[str] = ""
+    goal_id: Optional[int] = None
+    tags: Optional[List[str]] = None
+
+
+class NoteUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    content: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
+class NoteResponse(BaseModel):
+    id: int
+    user_id: int
+    goal_id: Optional[int]
+    title: str
+    content: str
+    tags: List[str]
+    is_auto_generated: bool
+    source_type: Optional[str]
+    source_id: Optional[int]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class NoteWithLinks(NoteResponse):
+    outgoing_links: List[NoteResponse]
+    incoming_links: List[NoteResponse]
+
+
+class NoteGraphNode(BaseModel):
+    id: int
+    title: str
+    tag_count: int
+
+
+class NoteGraphEdge(BaseModel):
+    source: int
+    target: int
+
+
+class NoteGraph(BaseModel):
+    nodes: List[NoteGraphNode]
+    edges: List[NoteGraphEdge]
+
+
+class NoteSearchResult(BaseModel):
+    note: NoteResponse
+    relevance_score: float
+
+
+class BacklinkInfo(BaseModel):
+    id: int
+    title: str
+    preview: str
+
+
+class BrainstormSessionCreate(BaseModel):
+    title: Optional[str] = Field(default="Brainstorm Session", max_length=80)
+
+
+class BrainstormSessionUpdate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=80)
+
+
+class BrainstormMessageResponse(BaseModel):
+    id: int
+    session_id: int
+    role: str
+    content: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class BrainstormFileResponse(BaseModel):
+    id: int
+    session_id: int
+    user_id: int
+    original_filename: str
+    stored_filename: str
+    file_type: str
+    mime_type: str
+    file_size: int
+    upload_status: str
+    created_at: datetime
+    extracted_text_preview: Optional[str] = None
+    chunk_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class BrainstormSessionResponse(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    message_count: int = 0
+    file_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class BrainstormSessionDetailResponse(BrainstormSessionResponse):
+    messages: List[BrainstormMessageResponse] = Field(default_factory=list)
+    files: List[BrainstormFileResponse] = Field(default_factory=list)
+
+
+class BrainstormUploadResponse(BaseModel):
+    success: bool
+    files: List[BrainstormFileResponse]
+
+
+class BrainstormChatRequest(BaseModel):
+    session_id: int
+    message: str = Field(..., min_length=1, max_length=8000)
+    file_ids: Optional[List[int]] = None
+    response_length: Literal["short", "balanced", "detailed"] = "balanced"
+
+
+class BrainstormChatResponse(BaseModel):
+    success: bool
+    session_id: int
+    user_message: BrainstormMessageResponse
+    ai_response: BrainstormMessageResponse
+
+
+class BrainstormSummarizeRequest(BaseModel):
+    session_id: int
+    file_id: Optional[int] = None
+    file_ids: Optional[List[int]] = None
+    style: Literal["concise", "detailed", "bullets", "study_notes"] = "concise"
+    response_length: Literal["short", "balanced", "detailed"] = "balanced"
+
+
+class BrainstormGenerateRequest(BaseModel):
+    session_id: int
+    file_id: Optional[int] = None
+    file_ids: Optional[List[int]] = None
+    prompt: Optional[str] = None
+    topic: Optional[str] = None
+    difficulty: Literal["easy", "medium", "hard"] = "medium"
+    num_questions: int = Field(default=5, ge=1, le=15)
+    response_length: Literal["short", "balanced", "detailed"] = "balanced"
+
+
+class BrainstormArtifactResponse(BaseModel):
+    success: bool
+    session_id: int
+    content: str
+    ai_response: BrainstormMessageResponse
+
+
+ArtifactSourceType = Literal["note", "brainstorm_session", "brainstorm_file", "manual"]
+
+
+class MindmapNode(BaseModel):
+    id: str
+    title: str = Field(..., min_length=1, max_length=80)
+    description: Optional[str] = Field(default=None, max_length=260)
+    category: Optional[str] = Field(default="concept", max_length=40)
+    level: int = Field(default=0, ge=0, le=8)
+    color: Optional[str] = Field(default=None, max_length=24)
+
+
+class MindmapEdge(BaseModel):
+    id: Optional[str] = None
+    source: str
+    target: str
+    label: Optional[str] = Field(default=None, max_length=80)
+    relation: Optional[str] = Field(default="related_to", max_length=40)
+
+
+class MindmapGraph(BaseModel):
+    nodes: List[MindmapNode] = Field(default_factory=list)
+    edges: List[MindmapEdge] = Field(default_factory=list)
+
+
+class MindmapGenerateRequest(BaseModel):
+    source_type: ArtifactSourceType = "manual"
+    source_id: Optional[int] = None
+    title: Optional[str] = Field(default=None, max_length=160)
+    content: Optional[str] = Field(default=None, max_length=20000)
+
+
+class MindmapUpdateRequest(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=160)
+    graph_data: Optional[MindmapGraph] = None
+
+
+class MindmapResponse(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    source_type: Optional[str]
+    source_id: Optional[int]
+    graph_data: Dict[str, Any]
+    summary: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FlashcardGenerateRequest(BaseModel):
+    source_type: ArtifactSourceType = "manual"
+    source_id: Optional[int] = None
+    title: Optional[str] = Field(default=None, max_length=160)
+    content: Optional[str] = Field(default=None, max_length=20000)
+    count: int = Field(default=12, ge=4, le=30)
+
+
+class FlashcardCreate(BaseModel):
+    front: str = Field(..., min_length=1)
+    back: str = Field(..., min_length=1)
+    card_type: str = Field(default="concept", max_length=40)
+    difficulty: Literal["easy", "medium", "hard"] = "medium"
+    tags: List[str] = Field(default_factory=list)
+
+
+class FlashcardResponse(BaseModel):
+    id: int
+    deck_id: int
+    front: str
+    back: str
+    card_type: str
+    difficulty: str
+    tags: List[str]
+    position: int
+    review_state: str
+    ease_factor: float
+    interval_days: int
+    due_at: Optional[datetime]
+    last_reviewed_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FlashcardDeckCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=160)
+    description: Optional[str] = None
+    cards: List[FlashcardCreate] = Field(default_factory=list)
+
+
+class FlashcardDeckResponse(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    description: Optional[str]
+    source_type: Optional[str]
+    source_id: Optional[int]
+    review_count: int
+    created_at: datetime
+    updated_at: datetime
+    card_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class FlashcardDeckDetailResponse(FlashcardDeckResponse):
+    cards: List[FlashcardResponse] = Field(default_factory=list)
+
+
+class FlashcardReviewRequest(BaseModel):
+    rating: Literal["again", "difficult", "known"]

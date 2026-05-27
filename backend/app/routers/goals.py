@@ -40,6 +40,21 @@ async def create_goal(
         db.commit()
         db.refresh(db_goal)
         print(f"[Backend] Goal created successfully: ID {db_goal.id}")
+
+        # Auto-create root note for the goal
+        note = models.Note(
+            user_id=current_user.id,
+            goal_id=db_goal.id,
+            title=db_goal.title,
+            content=f"# {db_goal.title}\n\n{db_goal.description or ''}\n\n## Goal Details\n- Learning Style: {db_goal.learning_style}\n- Target Date: {db_goal.target_date or 'Not set'}\n\nThis note was auto-generated when the goal was created.",
+            tags=["goal-root", "auto-generated"],
+            is_auto_generated=True,
+            source_type="goal",
+            source_id=db_goal.id
+        )
+        db.add(note)
+        db.commit()
+
         return db_goal
     except Exception as e:
         db.rollback()

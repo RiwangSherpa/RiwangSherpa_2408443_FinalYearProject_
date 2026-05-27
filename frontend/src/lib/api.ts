@@ -236,5 +236,91 @@ export const adaptiveLearningApi = {
   getSuggestedDifficulty: (goalId: number) => api.get(`/api/adaptive/suggested-difficulty/${goalId}`),
 }
 
+export const notesApi = {
+  getAll: (params?: { goal_id?: number; tag?: string; search?: string }) =>
+    api.get('/api/notes/', { params }),
+  getById: (id: number) => api.get(`/api/notes/${id}`),
+  create: (data: { title: string; content?: string; goal_id?: number; tags?: string[] }) =>
+    api.post('/api/notes/', data),
+  update: (id: number, data: { title?: string; content?: string; tags?: string[] }) =>
+    api.put(`/api/notes/${id}`, data),
+  delete: (id: number) => api.delete(`/api/notes/${id}`),
+  getBacklinks: (id: number) => api.get(`/api/notes/${id}/backlinks`),
+  getGraph: (goal_id?: number) => api.get('/api/notes/graph/all', { params: { goal_id } }),
+  autocomplete: (query: string) => api.get('/api/notes/search/autocomplete', { params: { query } }),
+  autoGenerate: (sourceType: string, sourceId: number, title: string, content: string, goalId?: number) =>
+    api.post('/api/notes/auto-generate', { source_type: sourceType, source_id: sourceId, title, content, goal_id: goalId }),
+}
+
+export const brainstormApi = {
+  getSessions: () => api.get('/api/brainstorm/sessions'),
+  createSession: (data: { title?: string }) => api.post('/api/brainstorm/sessions', data),
+  getSession: (sessionId: number) => api.get(`/api/brainstorm/sessions/${sessionId}`),
+  updateSession: (sessionId: number, data: { title: string }) =>
+    api.patch(`/api/brainstorm/sessions/${sessionId}`, data),
+  deleteSession: (sessionId: number) => api.delete(`/api/brainstorm/sessions/${sessionId}`),
+  getFiles: (sessionId: number) => api.get(`/api/brainstorm/files/${sessionId}`),
+  getFileContent: (fileId: number) =>
+    api.get(`/api/brainstorm/files/${fileId}/content`, { responseType: 'blob' }),
+  deleteFile: (fileId: number) => api.delete(`/api/brainstorm/files/${fileId}`),
+  upload: (sessionId: number, files: File[], onUploadProgress?: (progressEvent: any) => void) => {
+    const formData = new FormData()
+    formData.append('session_id', String(sessionId))
+    files.forEach((file) => formData.append('files', file))
+    return api.post('/api/brainstorm/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress,
+    })
+  },
+  chat: (sessionId: number, message: string, fileIds?: number[], responseLength = 'balanced') =>
+    api.post('/api/brainstorm/chat', {
+      session_id: sessionId,
+      message,
+      file_ids: fileIds,
+      response_length: responseLength,
+    }),
+  summarize: (sessionId: number, style: string = 'concise', fileId?: number, fileIds?: number[], responseLength = 'balanced') =>
+    api.post('/api/brainstorm/summarize', {
+      session_id: sessionId,
+      style,
+      file_id: fileId,
+      file_ids: fileIds,
+      response_length: responseLength,
+    }),
+  generateNotes: (sessionId: number, data?: { file_id?: number; file_ids?: number[]; topic?: string; prompt?: string; response_length?: string }) =>
+    api.post('/api/brainstorm/generate-notes', { session_id: sessionId, ...(data || {}) }),
+}
+
+export const mindmapsApi = {
+  getAll: () => api.get('/api/mindmaps/'),
+  getById: (id: number) => api.get(`/api/mindmaps/${id}`),
+  generate: (data: { source_type: string; source_id?: number; title?: string; content?: string }) =>
+    api.post('/api/mindmaps/generate', data),
+  update: (id: number, data: { title?: string; graph_data?: { nodes: any[]; edges: any[] } }) =>
+    api.patch(`/api/mindmaps/${id}`, data),
+  uploadGenerate: (files: File[], title?: string, onUploadProgress?: (progressEvent: any) => void) => {
+    const formData = new FormData()
+    if (title?.trim()) formData.append('title', title.trim())
+    files.forEach((file) => formData.append('files', file))
+    return api.post('/api/mindmaps/upload-generate', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress,
+    })
+  },
+  delete: (id: number) => api.delete(`/api/mindmaps/${id}`),
+}
+
+export const flashcardsApi = {
+  getDecks: () => api.get('/api/flashcards/decks'),
+  getDeck: (id: number) => api.get(`/api/flashcards/decks/${id}`),
+  createDeck: (data: { title: string; description?: string; cards?: Array<{ front: string; back: string; card_type?: string; difficulty?: string; tags?: string[] }> }) =>
+    api.post('/api/flashcards/decks', data),
+  generate: (data: { source_type: string; source_id?: number; title?: string; content?: string; count?: number }) =>
+    api.post('/api/flashcards/generate', data),
+  reviewCard: (cardId: number, rating: 'again' | 'difficult' | 'known') =>
+    api.patch(`/api/flashcards/cards/${cardId}/review`, { rating }),
+  deleteDeck: (id: number) => api.delete(`/api/flashcards/decks/${id}`),
+}
+
 export default api
 

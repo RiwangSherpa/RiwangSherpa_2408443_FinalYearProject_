@@ -26,6 +26,7 @@ class Goal(Base):
     roadmap_steps = relationship("RoadmapStep", back_populates="goal", cascade="all, delete-orphan")
     progress_records = relationship("Progress", back_populates="goal", cascade="all, delete-orphan")
     quiz_results = relationship("QuizResult", back_populates="goal", cascade="all, delete-orphan")
+    notes = relationship("Note", back_populates="goal", cascade="all, delete-orphan")
 
 class RoadmapStep(Base):
     """Individual steps in a study roadmap"""
@@ -128,6 +129,11 @@ class User(Base):
     goals = relationship("Goal", back_populates="user", cascade="all, delete-orphan")
     password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
     study_streaks = relationship("StudyStreak", back_populates="user", cascade="all, delete-orphan")
+    notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")
+    brainstorm_sessions = relationship("BrainstormSession", back_populates="user", cascade="all, delete-orphan")
+    brainstorm_files = relationship("BrainstormFile", back_populates="user", cascade="all, delete-orphan")
+    mindmaps = relationship("Mindmap", back_populates="user", cascade="all, delete-orphan")
+    flashcard_decks = relationship("FlashcardDeck", back_populates="user", cascade="all, delete-orphan")
 
 class PasswordResetToken(Base):
     """Password reset tokens"""
@@ -258,6 +264,89 @@ class ConversationMessage(Base):
     session = relationship("ConversationSession", back_populates="messages")
 
 
+class BrainstormSession(Base):
+    """Multimodal brainstorming workspace session."""
+    __tablename__ = "brainstorm_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String(80), nullable=False, default="Brainstorm Session")
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="brainstorm_sessions")
+    messages = relationship(
+        "BrainstormMessage",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="BrainstormMessage.created_at",
+    )
+    files = relationship(
+        "BrainstormFile",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="BrainstormFile.created_at.desc()",
+    )
+
+
+class BrainstormMessage(Base):
+    """Individual chat messages inside a Brainstorm session."""
+    __tablename__ = "brainstorm_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("brainstorm_sessions.id"), nullable=False)
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    session = relationship("BrainstormSession", back_populates="messages")
+
+
+class BrainstormFile(Base):
+    """Uploaded files attached to a Brainstorm session."""
+    __tablename__ = "brainstorm_files"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("brainstorm_sessions.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    original_filename = Column(String(255), nullable=False)
+    stored_filename = Column(String(255), nullable=False)
+    file_type = Column(String(20), nullable=False)
+    mime_type = Column(String(120), nullable=False)
+    file_size = Column(Integer, nullable=False)
+    storage_path = Column(String(1000), nullable=False)
+
+    extracted_text = Column(Text, nullable=True)
+    upload_status = Column(String(30), default="processing", nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    session = relationship("BrainstormSession", back_populates="files")
+    user = relationship("User", back_populates="brainstorm_files")
+    chunks = relationship(
+        "BrainstormChunk",
+        back_populates="file",
+        cascade="all, delete-orphan",
+        order_by="BrainstormChunk.chunk_index",
+    )
+
+
+class BrainstormChunk(Base):
+    """Text chunk prepared for future retrieval and vector search."""
+    __tablename__ = "brainstorm_chunks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    file_id = Column(Integer, ForeignKey("brainstorm_files.id"), nullable=False)
+    chunk_index = Column(Integer, nullable=False)
+    chunk_text = Column(Text, nullable=False)
+    chunk_summary = Column(Text, nullable=True)
+    page_number = Column(Integer, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    file = relationship("BrainstormFile", back_populates="chunks")
+
+
 
 class Achievement(Base):
     """Achievement definitions"""
@@ -356,6 +445,108 @@ class KnowledgeEdge(Base):
     
     created_at = Column(DateTime, server_default=func.now())
 
+
+
+class Note(Base):
+    """Obsidian-style notes with bidirectional linking"""
+    __tablename__ = "notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    goal_id = Column(Integer, ForeignKey("goals.id"), nullable=True)
+
+    title = Column(String(200), nullable=False)
+    content = Column(Text, default="")
+    tags = Column(JSON, default=list)
+
+    is_auto_generated = Column(Boolean, default=False)
+    source_type = Column(String(50), nullable=True)
+    source_id = Column(Integer, nullable=True)
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="notes")
+    goal = relationship("Goal", back_populates="notes")
+    outgoing_links = relationship("NoteLink", foreign_keys="NoteLink.source_note_id", back_populates="source_note", cascade="all, delete-orphan")
+    incoming_links = relationship("NoteLink", foreign_keys="NoteLink.target_note_id", back_populates="target_note", cascade="all, delete-orphan")
+
+
+class NoteLink(Base):
+    """Bidirectional links between notes"""
+    __tablename__ = "note_links"
+
+    id = Column(Integer, primary_key=True, index=True)
+    source_note_id = Column(Integer, ForeignKey("notes.id"), nullable=False)
+    target_note_id = Column(Integer, ForeignKey("notes.id"), nullable=False)
+
+    created_at = Column(DateTime, server_default=func.now())
+
+    source_note = relationship("Note", foreign_keys=[source_note_id], back_populates="outgoing_links")
+    target_note = relationship("Note", foreign_keys=[target_note_id], back_populates="incoming_links")
+
+
+class Mindmap(Base):
+    """AI-generated concept graph from notes, brainstorms, or uploaded context."""
+    __tablename__ = "mindmaps"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String(160), nullable=False)
+    source_type = Column(String(50), nullable=True)
+    source_id = Column(Integer, nullable=True)
+    graph_data = Column(JSON, nullable=False, default=dict)
+    summary = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="mindmaps")
+
+
+class FlashcardDeck(Base):
+    """A persistent deck of active-recall flashcards."""
+    __tablename__ = "flashcard_decks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String(160), nullable=False)
+    description = Column(Text, nullable=True)
+    source_type = Column(String(50), nullable=True)
+    source_id = Column(Integer, nullable=True)
+    review_count = Column(Integer, default=0)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="flashcard_decks")
+    cards = relationship(
+        "Flashcard",
+        back_populates="deck",
+        cascade="all, delete-orphan",
+        order_by="Flashcard.position",
+    )
+
+
+class Flashcard(Base):
+    """Single recall prompt inside a flashcard deck."""
+    __tablename__ = "flashcards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    deck_id = Column(Integer, ForeignKey("flashcard_decks.id"), nullable=False)
+    front = Column(Text, nullable=False)
+    back = Column(Text, nullable=False)
+    card_type = Column(String(40), default="concept")
+    difficulty = Column(String(20), default="medium")
+    tags = Column(JSON, default=list)
+    position = Column(Integer, default=0)
+    review_state = Column(String(30), default="new")
+    ease_factor = Column(Float, default=2.5)
+    interval_days = Column(Integer, default=0)
+    due_at = Column(DateTime, nullable=True)
+    last_reviewed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    deck = relationship("FlashcardDeck", back_populates="cards")
 
 
 class AIResponseCache(Base):

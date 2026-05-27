@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { authApi } from '../lib/api'
-import { BookOpen, Loader2, CheckCircle } from 'lucide-react'
+import { Loader2, CheckCircle } from 'lucide-react'
+import Logo from '../components/Logo'
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams()
@@ -56,14 +57,17 @@ export default function ResetPassword() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-dark-bg-primary px-4 transition-colors duration-300">
         <div className="max-w-md w-full">
-          <div className="bg-white rounded-card border border-neutral-200 p-8 text-center">
+          <div className="bg-white dark:bg-dark-bg-secondary rounded-card border border-neutral-200 dark:border-dark-border-primary p-8 text-center transition-colors duration-300">
+            <div className="mb-5 flex justify-center">
+              <Logo size="lg" showText={false} animated />
+            </div>
             <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-muted rounded-full mb-4">
               <CheckCircle className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold text-neutral-900 mb-2 font-heading">Password Reset Successful</h2>
-            <p className="text-neutral-600 mb-6">Your password has been reset. Redirecting to login...</p>
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-dark-text-primary mb-2 font-heading">Password Reset Successful</h2>
+            <p className="text-neutral-600 dark:text-dark-text-secondary mb-6">Your password has been reset. Redirecting to login...</p>
             <Link
               to="/login"
               className="text-primary hover:text-primary-light font-semibold"
@@ -77,17 +81,17 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-dark-bg-primary px-4 transition-colors duration-300">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl mb-4">
-            <BookOpen className="w-8 h-8 text-white" />
+          <div className="flex justify-center mb-5">
+            <Logo size="xl" showText={false} animated />
           </div>
-          <h1 className="text-3xl font-bold text-neutral-900 font-heading">Reset Password</h1>
-          <p className="text-neutral-600 mt-2">Enter your new password</p>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-dark-text-primary font-heading">Reset Password</h1>
+          <p className="text-neutral-600 dark:text-dark-text-secondary mt-2">Enter your new password</p>
         </div>
 
-        <div className="bg-white rounded-card border border-neutral-200 p-8">
+        <div className="bg-white dark:bg-dark-bg-secondary rounded-card border border-neutral-200 dark:border-dark-border-primary p-8 transition-colors duration-300">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
@@ -96,7 +100,7 @@ export default function ResetPassword() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-dark-text-primary mb-2">
                 New Password
               </label>
               <input
@@ -111,7 +115,7 @@ export default function ResetPassword() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-dark-text-primary mb-2">
                 Confirm Password
               </label>
               <input

@@ -21,14 +21,24 @@ import Subscription from './pages/Subscription'
 import ProfileAnalytics from './pages/ProfileAnalytics'
 import Tutor from './pages/Tutor'
 import Gamification from './pages/Gamification'
+import Notes from './pages/Notes'
+import Brainstorm from './pages/Brainstorm'
+import Mindmap from './pages/Mindmap'
+import Flashcards from './pages/Flashcards'
+import Logo from './components/Logo'
 
 function DefaultRoute() {
   const { isAuthenticated, loading } = useAuth()
   
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-dark-bg-primary transition-colors">
+        <div className="flex flex-col items-center gap-4">
+          <Logo size="xl" showText={false} animated />
+          <div className="h-1 w-24 overflow-hidden rounded-full bg-neutral-200 dark:bg-dark-bg-tertiary">
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-primary dark:bg-primary-dark" />
+          </div>
+        </div>
       </div>
     )
   }
@@ -79,6 +89,11 @@ function App() {
                   {/* Feature routes */}
                   <Route path="/tutor" element={<Tutor />} />
                   <Route path="/gamification" element={<Gamification />} />
+                  <Route path="/brainstorm" element={<Brainstorm />} />
+                  <Route path="/notes" element={<Notes />} />
+                  <Route path="/notes/:noteId" element={<Notes />} />
+                  <Route path="/mindmap" element={<Mindmap />} />
+                  <Route path="/flashcards" element={<Flashcards />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

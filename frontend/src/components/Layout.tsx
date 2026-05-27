@@ -15,6 +15,10 @@ import {
   ChevronDown,
   Crown,
   Flame,
+  FileText,
+  Sparkles,
+  Network,
+  Layers,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { progressApi } from '../lib/api'
@@ -30,12 +34,16 @@ const navigation = [
   { name: 'Goals', href: '/goals', icon: Target },
   { name: 'Roadmaps', href: '/roadmaps', icon: BookOpen },
   { name: 'Quiz', href: '/quiz', icon: HelpCircle },
+  { name: 'Notes', href: '/notes', icon: FileText },
+  { name: 'Brainstorm', href: '/brainstorm', icon: Sparkles },
 ]
 
 const moreNavigation = [
   { name: 'Productivity', href: '/productivity', icon: Timer },
   { name: 'AI Tutor', href: '/tutor', icon: Bot, badge: 'AI' },
   { name: 'Achievements', href: '/gamification', icon: Trophy },
+  { name: 'Mindmap', href: '/mindmap', icon: Network },
+  { name: 'Flashcards', href: '/flashcards', icon: Layers },
 ]
 
 export default function Layout({ children }: LayoutProps) {
@@ -74,10 +82,10 @@ export default function Layout({ children }: LayoutProps) {
       {/* Top Navigation Bar */}
       <nav className="sticky top-0 z-50 bg-neutral-50 dark:bg-dark-bg-primary border-b border-neutral-200 dark:border-dark-border-primary transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14">
+          <div className="flex items-center justify-between h-16">
             {/* Left: Logo */}
-            <div className="flex items-center">
-              <Logo size="lg" />
+            <div className="flex items-center min-w-0">
+              <Logo size="lg" animated className="py-1" textClassName="hidden sm:inline" />
             </div>
 
             {/* Center: Navigation (Desktop) */}
@@ -108,6 +116,8 @@ export default function Layout({ children }: LayoutProps) {
                   <button
                     onClick={() => setMoreMenuOpen(!moreMenuOpen)}
                     onBlur={() => setTimeout(() => setMoreMenuOpen(false), 200)}
+                    aria-expanded={moreMenuOpen}
+                    aria-haspopup="menu"
                     className={`
                       flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150
                       ${moreMenuOpen
@@ -121,7 +131,7 @@ export default function Layout({ children }: LayoutProps) {
                   </button>
                   
                   {moreMenuOpen && (
-                    <div className="absolute top-full mt-2 right-0 w-56 bg-white dark:bg-dark-bg-secondary border border-neutral-200 dark:border-dark-border-primary rounded-card py-2 z-50 transition-colors">
+                    <div role="menu" className="absolute top-full mt-2 right-0 w-56 bg-white dark:bg-dark-bg-secondary border border-neutral-200 dark:border-dark-border-primary rounded-card py-2 z-50 shadow-lg transition-colors">
                       {moreNavigation.map((item: { name: string; href: string; icon: React.ElementType; badge?: string }) => {
                         const active = location.pathname === item.href
                         const Icon = item.icon
@@ -129,6 +139,8 @@ export default function Layout({ children }: LayoutProps) {
                           <Link
                             key={item.name}
                             to={item.href}
+                            role="menuitem"
+                            onClick={() => setMoreMenuOpen(false)}
                             className={`
                               flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors
                               ${active
@@ -205,9 +217,10 @@ export default function Layout({ children }: LayoutProps) {
 
               {/* Mobile Menu Button */}
               <button
-                      onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                      className="md:hidden p-2 rounded-lg text-neutral-600 dark:text-dark-text-secondary hover:bg-neutral-100 dark:hover:bg-dark-hover-primary transition-colors"
-                    >
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 rounded-lg text-neutral-600 dark:text-dark-text-secondary hover:bg-neutral-100 dark:hover:bg-dark-hover-primary transition-colors"
+                aria-label="Toggle navigation menu"
+              >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
             </div>
@@ -224,6 +237,9 @@ export default function Layout({ children }: LayoutProps) {
               className="md:hidden border-t border-neutral-200 dark:border-dark-border-primary bg-white dark:bg-dark-bg-secondary transition-colors"
             >
               <div className="px-4 py-3 space-y-1">
+                <div className="px-4 py-2 mb-2">
+                  <Logo size="sm" animated />
+                </div>
                 <p className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-400 dark:text-dark-text-tertiary">Main</p>
                 {navigation.map((item) => {
                   const active = location.pathname === item.href

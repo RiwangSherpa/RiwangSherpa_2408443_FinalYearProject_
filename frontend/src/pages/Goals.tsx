@@ -4,7 +4,6 @@ import { Plus, BookOpen, Sparkles, Loader2, Trash2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useData } from '../contexts/DataContext'
 import { goalsApi, roadmapsApi } from '../lib/api'
-import { Goal } from '../types'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
@@ -13,7 +12,7 @@ import LimitReachedModal from '../components/ui/LimitReachedModal'
 
 export default function Goals() {
   const navigate = useNavigate()
-  const { goals, setGoals, loadingGoals, refreshGoals, refreshActivities } = useData()
+  const { goals, loadingGoals, refreshGoals, refreshActivities } = useData()
   const [goalProgress, setGoalProgress] = useState<Record<number, { completed: number; total: number }>>({})
   const [showGoalForm, setShowGoalForm] = useState(false)
   const [newGoal, setNewGoal] = useState({

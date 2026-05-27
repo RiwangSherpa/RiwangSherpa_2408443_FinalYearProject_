@@ -38,12 +38,20 @@ REQUIREMENTS:
 6. Make steps practical and achievable
 
 OUTPUT FORMAT:
-Return ONLY the numbered steps in this exact format:
-1. [Step Title] - [Brief description of what to learn and how. Estimated: X hours]
-2. [Step Title] - [Brief description of what to learn and how. Estimated: X hours]
-...
+Return STRICT JSON ONLY. Do not include markdown fences, comments, prose, or explanations outside JSON.
+The response must match this exact schema:
+{{
+  "steps": [
+    {{
+      "step_number": 1,
+      "title": "Step title",
+      "description": "Specific actionable description.",
+      "estimated_hours": 2
+    }}
+  ]
+}}
 
-Do not include any introductory text, explanations, or conclusions. Only return the numbered steps."""
+Do not include any introductory text, explanations, or conclusions. Only return valid JSON."""
 
     @staticmethod
     def quiz_prompt(
@@ -89,6 +97,7 @@ SPECIAL INSTRUCTIONS FOR CODE QUESTIONS:
 - The code snippet MUST be included in the question text, not referenced separately
 
 OUTPUT FORMAT:
+Return STRICT JSON ONLY. Do not include markdown fences, comments, prose, or explanations outside JSON.
 Return a JSON array with this exact structure. CRITICAL: Ensure all strings are valid JSON strings - no unescaped newlines or quotes inside strings.
 [
   {{

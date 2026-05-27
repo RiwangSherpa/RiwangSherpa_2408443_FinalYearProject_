@@ -4,17 +4,11 @@ import {
   Bot,
   Send,
   Plus,
-  Clock,
   MessageSquare,
-  Star,
   ThumbsUp,
   ThumbsDown,
-  MoreVertical,
-  BookOpen,
-  ChevronRight,
   Sparkles,
   Loader2,
-  X
 } from 'lucide-react'
 import { tutorApi, goalsApi } from '../lib/api'
 import LimitReachedModal from '../components/ui/LimitReachedModal'

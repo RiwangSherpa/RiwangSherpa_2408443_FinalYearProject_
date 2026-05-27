@@ -220,3 +220,149 @@ export interface ActivityData {
   goal_title?: string
   metadata?: Record<string, any>
 }
+
+export interface Note {
+  id: number
+  user_id: number
+  goal_id?: number
+  title: string
+  content: string
+  tags: string[]
+  is_auto_generated: boolean
+  source_type?: string
+  source_id?: number
+  created_at: string
+  updated_at: string
+  outgoing_links?: Note[]
+  incoming_links?: Note[]
+}
+
+export interface NoteGraph {
+  nodes: Array<{
+    id: number
+    title: string
+    tag_count: number
+  }>
+  edges: Array<{
+    source: number
+    target: number
+  }>
+}
+
+export interface BacklinkInfo {
+  id: number
+  title: string
+  preview: string
+}
+
+export interface BrainstormSession {
+  id: number
+  user_id: number
+  title: string
+  created_at: string
+  updated_at: string
+  message_count: number
+  file_count: number
+}
+
+export interface BrainstormMessage {
+  id: number
+  session_id: number
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  created_at: string
+}
+
+export interface BrainstormFile {
+  id: number
+  session_id: number
+  user_id: number
+  original_filename: string
+  stored_filename: string
+  file_type: 'pdf' | 'png' | 'jpg' | 'jpeg' | 'webp' | 'txt' | 'md' | 'docx'
+  mime_type: string
+  file_size: number
+  upload_status: 'processing' | 'ready' | 'failed'
+  created_at: string
+  extracted_text_preview?: string
+  chunk_count: number
+  preview_url?: string
+}
+
+export interface BrainstormChatResponse {
+  success: boolean
+  session_id: number
+  user_message: BrainstormMessage
+  ai_response: BrainstormMessage
+}
+
+export interface UploadResponse {
+  success: boolean
+  files: BrainstormFile[]
+}
+
+export type ArtifactSourceType = 'note' | 'brainstorm_session' | 'brainstorm_file' | 'manual'
+
+export interface MindmapNode {
+  id: string
+  title: string
+  description?: string
+  category?: string
+  level: number
+  color?: string
+}
+
+export interface MindmapEdge {
+  id?: string
+  source: string
+  target: string
+  label?: string
+  relation?: string
+}
+
+export interface Mindmap {
+  id: number
+  user_id: number
+  title: string
+  source_type?: ArtifactSourceType
+  source_id?: number
+  graph_data: {
+    nodes: MindmapNode[]
+    edges: MindmapEdge[]
+  }
+  summary?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Flashcard {
+  id: number
+  deck_id: number
+  front: string
+  back: string
+  card_type: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  tags: string[]
+  position: number
+  review_state: 'new' | 'again' | 'difficult' | 'known'
+  ease_factor: number
+  interval_days: number
+  due_at?: string
+  last_reviewed_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface FlashcardDeck {
+  id: number
+  user_id: number
+  title: string
+  description?: string
+  source_type?: ArtifactSourceType
+  source_id?: number
+  review_count: number
+  created_at: string
+  updated_at: string
+  card_count: number
+  cards?: Flashcard[]
+}

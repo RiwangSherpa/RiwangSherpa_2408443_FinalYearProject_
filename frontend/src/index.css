@@ -6,8 +6,6 @@
 @layer base {
   *, *::before, *::after {
     box-sizing: border-box;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
   }
 
   html {
@@ -100,15 +98,31 @@
     @apply prose prose-sm max-w-none font-body text-neutral-800
          prose-headings:font-heading prose-headings:text-neutral-900
          prose-a:text-secondary hover:prose-a:text-secondary/80
-         prose-code:bg-neutral-100 prose-code:text-primary prose-code:rounded prose-code:px-1
-         prose-pre:bg-neutral-900 prose-pre:rounded-card prose-pre:border prose-pre:border-neutral-700;
+         prose-code:bg-neutral-100 prose-code:text-primary prose-code:rounded prose-code:px-1.5 prose-code:py-0.5
+         prose-code:before:content-none prose-code:after:content-none
+         prose-pre:bg-transparent prose-pre:p-0 prose-pre:border-0;
   }
   .dark .prose-custom {
     @apply prose text-dark-text-primary
          prose-headings:text-dark-text-primary
          prose-a:text-secondary-dark hover:prose-a:text-primary-dark/80
          prose-code:bg-dark-bg-tertiary prose-code:text-primary-dark
-         prose-pre:bg-dark-bg-primary prose-pre:border-dark-border-secondary;
+         prose-pre:bg-transparent prose-pre:border-0;
+  }
+
+  .prose-brainstorm {
+    @apply text-[0.98rem] leading-8
+         prose-p:my-4 prose-ul:my-4 prose-ol:my-4 prose-li:my-1.5
+         prose-headings:mt-8 prose-headings:mb-3
+         prose-h1:text-[1.9rem] prose-h2:text-[1.45rem] prose-h3:text-[1.15rem]
+         prose-headings:scroll-mt-24
+         prose-strong:font-semibold prose-hr:my-8
+         prose-li:marker:text-neutral-400
+         prose-table:my-0 prose-img:rounded-lg;
+  }
+
+  .dark .prose-brainstorm {
+    @apply prose-li:marker:text-dark-text-tertiary;
   }
 
   /* Dark mode utility classes */
@@ -128,9 +142,10 @@
 /* Highlight.js code block styling */
 .hljs { 
   background: #111827 !important; 
-  border-radius: 12px !important; 
-  padding: 1rem !important; 
-  font-size: 0.8125rem !important; 
+  border-radius: 0 !important;
+  padding: 1rem 1rem 1.1rem !important;
+  font-size: 0.84rem !important;
+  line-height: 1.65 !important;
 }
 .hljs-keyword, .hljs-selector-tag { color: #86EFAC !important; }
 .hljs-string, .hljs-attr { color: #FDE68A !important; }
@@ -141,5 +156,107 @@
 /* Dark mode highlight.js styles */
 .dark .hljs {
   background: #1F2937 !important;
+}
+
+.code-block-wrapper code,
+.hljs {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
+
+.prose-brainstorm .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.4rem 0.1rem;
+  margin: 1.25rem 0;
+}
+
+.prose-brainstorm .katex {
+  font-size: 1.02em;
+}
+
+.dark .prose-brainstorm .katex,
+.dark .prose-brainstorm .katex-display {
+  color: #F3F4F6;
+}
+
+.prose-brainstorm table {
+  width: 100%;
+  min-width: 32rem;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.prose-brainstorm thead th:first-child {
+  border-top-left-radius: 0.75rem;
+}
+
+.prose-brainstorm thead th:last-child {
+  border-top-right-radius: 0.75rem;
+}
+
+.prose-brainstorm ul > li > p,
+.prose-brainstorm ol > li > p {
+  margin: 0.2rem 0;
+}
+
+.studybuddy-flow .react-flow__pane {
+  cursor: grab;
+}
+
+.studybuddy-flow .react-flow__pane:active {
+  cursor: grabbing;
+}
+
+.studybuddy-flow .concept-flow-node {
+  width: 312px;
+  min-height: 142px;
+  border: 1px solid color-mix(in srgb, var(--node-color) 42%, #ffffff);
+  border-left: 5px solid var(--node-color);
+  border-radius: 12px;
+  background: var(--mindmap-node-bg, #ffffff);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.09);
+  padding: 18px;
+  transition: opacity 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.studybuddy-flow .concept-flow-node-root {
+  width: 344px;
+  min-height: 154px;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.15);
+}
+
+.studybuddy-flow .react-flow__node.selected .concept-flow-node,
+.studybuddy-flow .concept-flow-node:hover {
+  box-shadow: 0 24px 52px rgba(15, 23, 42, 0.16);
+}
+
+.studybuddy-flow .react-flow__controls,
+.studybuddy-flow .react-flow__minimap {
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.dark .studybuddy-flow .react-flow__controls,
+.dark .studybuddy-flow .react-flow__minimap {
+  border-color: #374151;
+  background: #111827;
+}
+
+.dark .studybuddy-flow .react-flow__node {
+  --mindmap-node-bg: #111827;
+  color: #F9FAFB;
+}
+
+.dark .studybuddy-flow .concept-flow-node {
+  border-color: #374151;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
+}
+
+.dark .studybuddy-flow .react-flow__controls-button {
+  background: #111827;
+  border-color: #374151;
+  color: #F9FAFB;
 }
 

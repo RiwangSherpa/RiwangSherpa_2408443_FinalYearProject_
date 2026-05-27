@@ -3,11 +3,9 @@ AI Conversational Tutor Service
 Manages context-aware tutoring conversations with memory and summarization
 """
 
-import json
-from typing import List, Dict, Optional, AsyncGenerator
-from datetime import datetime, timedelta
+from typing import List, Dict, Optional
+from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from app import models
 from app.services.ai_service import ai_service
@@ -160,7 +158,7 @@ class AITutorService:
                 session_id=session_id,
                 role="assistant",
                 content=ai_response_content,
-                model_used="dolphin3:8b"
+                model_used=ai_service.get_model_name("tutor")
             )
             self.db.add(ai_message)
             
@@ -221,16 +219,12 @@ Do not:
         return base_prompt
     
     async def _call_ai_tutor(self, messages: List[Dict[str, str]]) -> str:
-        """Call AI service with tutoring messages"""
-        
-        prompt_text = "\n".join([
-            f"{msg['role'].upper()}: {msg['content']}"
-            for msg in messages
-        ])
-        
-        response = await ai_service._call_ollama(prompt_text, temperature=0.7)
-        
-        return response
+        """Call AI service with native chat messages."""
+        return await ai_service.generate_chat(
+            messages,
+            temperature=0.7,
+            model=ai_service.get_model_name("tutor"),
+        )
     
     async def explain_concept(
         self,
@@ -252,7 +246,11 @@ Requirements:
 
 Format your response in clear sections with markdown formatting."""
         
-        return await ai_service._call_ollama(prompt, temperature=0.6)
+        return await ai_service.generate_text(
+            prompt,
+            temperature=0.6,
+            model=ai_service.get_model_name("tutor"),
+        )
     
     def rate_response_helpfulness(self, message_id: int, was_helpful: bool) -> None:
         """Allow user to rate whether an AI response was helpful"""

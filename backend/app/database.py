@@ -93,6 +93,19 @@ def _run_hashed_password_nullable_migration():
         conn.commit()
 
 
+def _run_brainstorm_chunk_summary_migration():
+    """Add chunk summaries for retrieval/map-reduce without requiring Alembic locally."""
+    inspector = inspect(engine)
+    if "brainstorm_chunks" not in inspector.get_table_names():
+        return
+    existing_cols = {c["name"] for c in inspector.get_columns("brainstorm_chunks")}
+    if "chunk_summary" in existing_cols:
+        return
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE brainstorm_chunks ADD COLUMN chunk_summary TEXT"))
+        conn.commit()
+
+
 def get_db():
     """Dependency for getting database session"""
     db = SessionLocal()
@@ -110,6 +123,8 @@ def init_db():
         UserDailyUsage,
         Concept, UserConceptMastery, ConceptPrerequisite, GoalConcept,
         ConversationSession, ConversationMessage,
+        BrainstormSession, BrainstormMessage, BrainstormFile, BrainstormChunk,
+        Mindmap, FlashcardDeck, Flashcard,
         Achievement, UserAchievement, UserStats,
         KnowledgeNode, KnowledgeEdge,
         AIResponseCache
@@ -117,4 +132,5 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     _run_user_oauth_migration()
     _run_hashed_password_nullable_migration()
+    _run_brainstorm_chunk_summary_migration()
 

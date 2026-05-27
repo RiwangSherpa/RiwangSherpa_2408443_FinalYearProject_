@@ -48,8 +48,8 @@ export default function Login() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <Logo size="lg" />
+          <div className="flex justify-center mb-5">
+            <Logo size="xl" showText={false} animated />
           </div>
           <h1 className="font-heading text-3xl font-bold text-neutral-900 mb-2">Welcome Back</h1>
           <p className="text-sm text-neutral-500">

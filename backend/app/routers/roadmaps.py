@@ -107,7 +107,7 @@ async def complete_step(
     try:
         step.is_completed = True
         step.completed_at = datetime.utcnow()
-        
+
         progress = models.Progress(
             goal_id=goal.id,
             date=datetime.utcnow().date(),
@@ -115,7 +115,43 @@ async def complete_step(
             steps_completed=1
         )
         db.add(progress)
-        
+
+        # Auto-create note for completed step
+        note_content = f"""# {step.title}
+
+{step.description or ''}
+
+**Step {step.step_number}** in roadmap for **{goal.title}**
+
+**Estimated Hours:** {step.estimated_hours}
+
+**Completed:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}
+
+{step.ai_explanation or ''}
+
+This note was auto-generated when you completed this roadmap step.
+"""
+
+        # Check if note already exists
+        existing = db.query(models.Note).filter(
+            models.Note.user_id == current_user.id,
+            models.Note.source_type == "roadmap_step",
+            models.Note.source_id == step.id
+        ).first()
+
+        if not existing:
+            step_note = models.Note(
+                user_id=current_user.id,
+                goal_id=goal.id,
+                title=f"Step: {step.title}",
+                content=note_content,
+                tags=["roadmap-step", "completed", "auto-generated"],
+                is_auto_generated=True,
+                source_type="roadmap_step",
+                source_id=step.id
+            )
+            db.add(step_note)
+
         gamification_service = GamificationService(db)
         gamification_service.update_stats_from_activity(current_user.id, "roadmap_step")
         

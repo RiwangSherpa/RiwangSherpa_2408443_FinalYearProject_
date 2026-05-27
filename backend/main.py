@@ -3,9 +3,11 @@ from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.rate_limiter import RateLimitMiddleware
 from app.middleware.error_handler import setup_exception_handlers
+from app.services.providers.provider_factory import get_ai_provider
 
 from app.database import init_db
 from app.routers import (
@@ -24,6 +26,10 @@ from app.routers import (
     gamification,
     knowledge_graph,
     predictions,
+    notes,
+    brainstorm,
+    mindmaps,
+    flashcards,
 )
 
 app = FastAPI(
@@ -73,6 +79,10 @@ app.include_router(tutor.router)  # AI Tutor
 app.include_router(gamification.router)  # Gamification
 app.include_router(knowledge_graph.router)  # Knowledge Graph
 app.include_router(predictions.router)  # Predictive Analytics
+app.include_router(notes.router, prefix="/api/notes", tags=["notes"])  # Obsidian-style Notes
+app.include_router(brainstorm.router)  # Multimodal Brainstorm workspace
+app.include_router(mindmaps.router)
+app.include_router(flashcards.router)
 
 
 @app.get("/")
@@ -87,8 +97,6 @@ async def root():
 @app.get("/api/health")
 async def health_check():
     """Comprehensive health check endpoint"""
-    import requests
-    
     # Check database
     db_status = "healthy"
     try:
@@ -100,15 +108,22 @@ async def health_check():
         db_status = f"unhealthy: {str(e)}"
     
     # Check AI service
-    ai_status = "healthy"
+    ai_available = False
+    ai_status = "unavailable"
+    provider_name = settings.AI_PROVIDER
+    model_name = settings.AI_MODEL
+    provider_base_url = None
     try:
-        response = requests.get("http://localhost:11434/api/tags", timeout=5)
-        if response.status_code != 200:
-            ai_status = "unavailable"
-    except:
-        ai_status = "unavailable"
+        provider = get_ai_provider()
+        provider_name = provider.name
+        model_name = provider.model
+        provider_base_url = getattr(provider, "base_url", None)
+        ai_available = await provider.health_check()
+        ai_status = "healthy" if ai_available else "unavailable"
+    except Exception as e:
+        ai_status = f"unavailable: {str(e)}"
     
-    overall_status = "healthy" if db_status == "healthy" else "degraded"
+    overall_status = "healthy" if db_status == "healthy" and ai_available else "degraded"
     
     return {
         "status": overall_status,
@@ -116,7 +131,13 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "services": {
             "database": db_status,
-            "ai_service": ai_status
+            "ai_service": {
+                "status": ai_status,
+                "provider": provider_name,
+                "model": model_name,
+                "base_url": provider_base_url,
+                "available": ai_available
+            }
         }
     }
 
