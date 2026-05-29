@@ -9,7 +9,9 @@ from typing import List
 from app.database import get_db
 from app import models, schemas
 from app.dependencies import get_current_user
+from app.services.email_service import send_goal_completed_email_async
 from app.services.gamification import GamificationService
+from app.services.subscription_service import has_active_pro_subscription
 
 router = APIRouter()
 
@@ -21,7 +23,7 @@ async def create_goal(
 ):
     """Create a new learning goal"""
     
-    if current_user.subscription_plan != models.SubscriptionPlan.PRO:
+    if not has_active_pro_subscription(current_user):
         active_goals_count = db.query(models.Goal).filter(
             models.Goal.user_id == current_user.id,
             models.Goal.is_completed == False
@@ -179,6 +181,12 @@ async def complete_goal(
         raise HTTPException(status_code=404, detail="Goal not found")
     
     try:
+        if db_goal.is_completed:
+            return {
+                "goal": db_goal,
+                "new_achievements": [],
+                "level_up": None
+            }
         db_goal.is_completed = True
         db.commit()
         db.refresh(db_goal)
@@ -198,6 +206,7 @@ async def complete_goal(
                 "old_level": old_level,
                 "new_level": new_level_progress["current_level"]
             }
+        send_goal_completed_email_async(db, current_user.id, db_goal.title)
         
         return {
             "goal": db_goal,

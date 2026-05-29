@@ -13,13 +13,24 @@ import {
   Tag,
   Eye,
   Edit3,
-  Link as LinkIcon
+  Link as LinkIcon,
+  MoreHorizontal,
+  Info,
+  Calendar,
+  X,
+  PanelRightOpen,
+  PanelRightClose,
+  Columns,
 } from 'lucide-react'
 import { notesApi, goalsApi, mindmapsApi, flashcardsApi } from '../lib/api'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
+import InputDialog from '../components/ui/InputDialog'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
 import NoteGraph from '../components/notes/NoteGraph'
 import MindMap from '../components/notes/MindMap'
+import { useToast } from '../components/ui/ToastContext'
+import { useAchievementNotifications } from '../hooks/useAchievementNotifications'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -43,6 +54,8 @@ interface Note {
 export default function Notes() {
   const { noteId } = useParams<{ noteId?: string }>()
   const navigate = useNavigate()
+  const toast = useToast()
+  const { checkForAchievements } = useAchievementNotifications()
 
   const [notes, setNotes] = useState<Note[]>([])
   const [currentNote, setCurrentNote] = useState<Note | null>(null)
@@ -59,6 +72,17 @@ export default function Notes() {
   const [graphData, setGraphData] = useState<{ nodes: Array<{id: number; title: string; tag_count: number}>; edges: Array<{source: number; target: number}> } | null>(null)
   const [showMindMap, setShowMindMap] = useState(false)
   const [artifactLoading, setArtifactLoading] = useState<'mindmap' | 'flashcards' | null>(null)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [creatingNote, setCreatingNote] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const [renameTarget, setRenameTarget] = useState<Note | null>(null)
+  const [renamingNote, setRenamingNote] = useState(false)
+  const [renameError, setRenameError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Note | null>(null)
+  const [deletingNote, setDeletingNote] = useState(false)
+  const [showDetailsPanel, setShowDetailsPanel] = useState(true)
+  const [toolbarMenuOpen, setToolbarMenuOpen] = useState(false)
+  const [noteMenuOpenId, setNoteMenuOpenId] = useState<number | null>(null)
 
   const editorRef = useRef<HTMLTextAreaElement>(null)
   const autocompleteRef = useRef<HTMLDivElement>(null)
@@ -81,6 +105,13 @@ export default function Notes() {
       loadGraphData()
     }
   }, [showGraph])
+
+  useEffect(() => {
+    if (!currentNote) return
+    setToolbarMenuOpen(false)
+    setNoteMenuOpenId(null)
+    setShowDetailsPanel(Boolean(currentNote.outgoing_links?.length || backlinks.length))
+  }, [currentNote?.id, currentNote?.outgoing_links?.length, backlinks.length])
 
   const loadNotes = async () => {
     try {
@@ -133,17 +164,64 @@ export default function Notes() {
     }
   }
 
-  const createNote = async () => {
-    const title = prompt('Enter note title:')
-    if (!title) return
+  const createNote = () => {
+    setCreateError('')
+    setCreateDialogOpen(true)
+  }
 
+  const confirmCreateNote = async (title: string) => {
+    const trimmedTitle = title.trim()
+    if (!trimmedTitle) {
+      setCreateError('Note title is required.')
+      return
+    }
     try {
-      const response = await notesApi.create({ title, content: '' })
+      setCreatingNote(true)
+      const response = await notesApi.create({ title: trimmedTitle, content: '' })
+      setNotes((current) => [response.data, ...current.filter((note) => note.id !== response.data.id)])
+      setCurrentNote(response.data)
+      setCreateDialogOpen(false)
       navigate(`/notes/${response.data.id}`)
-      loadNotes()
-    } catch (error) {
+      await Promise.allSettled([loadNotes(), checkForAchievements()])
+      toast.success('Note created.')
+    } catch (error: any) {
       console.error('Failed to create note:', error)
-      alert('Failed to create note. Title might already exist.')
+      setCreateError(error.response?.data?.detail || 'Failed to create note. Title might already exist.')
+    } finally {
+      setCreatingNote(false)
+    }
+  }
+
+  const renameNote = (note: Note) => {
+    setRenameError('')
+    setRenameTarget(note)
+  }
+
+  const confirmRenameNote = async (nextTitle: string) => {
+    if (!renameTarget) return
+    const trimmedTitle = nextTitle.trim()
+    if (!trimmedTitle) {
+      setRenameError('Note title is required.')
+      return
+    }
+    if (trimmedTitle === renameTarget.title) {
+      setRenameTarget(null)
+      return
+    }
+    try {
+      setRenamingNote(true)
+      const response = await notesApi.update(renameTarget.id, { title: trimmedTitle })
+      if (currentNote?.id === renameTarget.id) {
+        setCurrentNote((prev) => (prev ? { ...prev, ...response.data } : prev))
+      }
+      setRenameTarget(null)
+      await loadNotes()
+      toast.success('Note renamed.')
+    } catch (error: any) {
+      console.error('Failed to rename note:', error)
+      setRenameError(error.response?.data?.detail || 'Failed to rename note. A note with that title may already exist.')
+    } finally {
+      setRenamingNote(false)
     }
   }
 
@@ -157,22 +235,33 @@ export default function Notes() {
       loadNotes()
     } catch (error) {
       console.error('Failed to update note:', error)
+      toast.error('Failed to save note changes.')
     } finally {
       setIsSaving(false)
     }
   }
 
-  const deleteNote = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this note?')) return
+  const deleteNote = (note: Note) => {
+    setDeleteTarget(note)
+  }
 
+  const confirmDeleteNote = async () => {
+    if (!deleteTarget) return
     try {
-      await notesApi.delete(id)
-      if (currentNote?.id === id) {
+      setDeletingNote(true)
+      await notesApi.delete(deleteTarget.id)
+      if (currentNote?.id === deleteTarget.id) {
         navigate('/notes')
       }
-      loadNotes()
-    } catch (error) {
+      setNotes((current) => current.filter((note) => note.id !== deleteTarget.id))
+      setDeleteTarget(null)
+      await loadNotes()
+      toast.success('Note deleted.')
+    } catch (error: any) {
       console.error('Failed to delete note:', error)
+      toast.error(error.response?.data?.detail || 'Failed to delete note.')
+    } finally {
+      setDeletingNote(false)
     }
   }
 
@@ -236,10 +325,11 @@ export default function Notes() {
         source_id: currentNote.id,
         title: `${currentNote.title} Mindmap`,
       })
+      await checkForAchievements()
       navigate('/mindmap')
     } catch (error) {
       console.error('Failed to generate mindmap:', error)
-      alert('Failed to generate mindmap from this note.')
+      toast.error('Failed to generate mindmap from this note.')
     } finally {
       setArtifactLoading(null)
     }
@@ -255,10 +345,11 @@ export default function Notes() {
         title: `${currentNote.title} Flashcards`,
         count: 12,
       })
+      await checkForAchievements()
       navigate('/flashcards')
     } catch (error) {
       console.error('Failed to generate flashcards:', error)
-      alert('Failed to generate flashcards from this note.')
+      toast.error('Failed to generate flashcards from this note.')
     } finally {
       setArtifactLoading(null)
     }
@@ -293,19 +384,30 @@ export default function Notes() {
   }
 
   const allTags = Array.from(new Set(notes.flatMap(n => n.tags)))
+  const hasLinkedNotes = Boolean(currentNote?.outgoing_links?.length || backlinks.length)
+  const notePreview = (note: Note) => note.content.replace(/\s+/g, ' ').trim().slice(0, 110)
+  const formatNoteDate = (value?: string) => {
+    if (!value) return ''
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return ''
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  }
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-dark-bg-primary flex">
+    <div className="min-h-[calc(100vh-8rem)] overflow-hidden rounded-card border border-neutral-200 bg-neutral-50 shadow-sm dark:border-dark-border-primary dark:bg-dark-bg-primary lg:grid lg:grid-cols-[20rem_minmax(0,1fr)_auto]">
       {/* Sidebar */}
-      <div className="w-80 bg-white dark:bg-dark-bg-secondary border-r border-neutral-200 dark:border-dark-border flex flex-col">
-        <div className="p-4 border-b border-neutral-200 dark:border-dark-border">
+      <div className="flex max-h-[22rem] flex-col border-b border-neutral-200 bg-white dark:border-dark-border-primary dark:bg-dark-bg-secondary lg:max-h-none lg:border-b-0 lg:border-r">
+        <div className="border-b border-neutral-200 p-4 dark:border-dark-border-primary">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-lg font-bold text-neutral-900 dark:text-dark-text-primary flex items-center gap-2">
-              <FileText className="w-5 h-5" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-muted text-primary dark:bg-primary/20 dark:text-primary-dark">
+                <FileText className="w-5 h-5" />
+              </span>
               Notes
             </h1>
-            <Button variant="primary" size="sm" onClick={createNote} className="!p-2">
+            <Button variant="primary" size="sm" onClick={createNote} className="gap-2">
               <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline lg:hidden xl:inline">New</span>
             </Button>
           </div>
 
@@ -316,7 +418,7 @@ export default function Notes() {
               placeholder="Search notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-neutral-100 dark:bg-dark-bg-tertiary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2.5 pl-10 pr-4 text-sm text-neutral-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-dark-border-primary dark:bg-dark-bg-tertiary dark:text-dark-text-primary"
             />
           </div>
         </div>
@@ -327,9 +429,10 @@ export default function Notes() {
               <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
             </div>
           ) : notes.length === 0 ? (
-            <div className="text-center py-8 text-neutral-500 dark:text-dark-text-tertiary">
+            <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 px-4 py-8 text-center text-neutral-500 dark:border-dark-border-primary dark:bg-dark-bg-tertiary dark:text-dark-text-tertiary">
               <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No notes yet</p>
+              <p className="font-semibold text-neutral-800 dark:text-dark-text-primary">No notes yet</p>
+              <p className="mt-1 text-sm">Capture ideas and connect them as you study.</p>
               <Button variant="primary" size="sm" onClick={createNote} className="mt-4">
                 Create your first note
               </Button>
@@ -340,36 +443,88 @@ export default function Notes() {
                 key={note.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                className={`group relative rounded-lg border p-3 cursor-pointer transition-all ${
                   currentNote?.id === note.id
-                    ? 'bg-primary-50 dark:bg-primary-900/20 border-l-4 border-primary-500'
-                    : 'hover:bg-neutral-100 dark:hover:bg-dark-bg-tertiary'
+                    ? 'border-primary bg-primary-muted/60 shadow-sm dark:border-primary-dark dark:bg-primary/10'
+                    : 'border-transparent bg-white hover:border-neutral-200 hover:bg-neutral-50 dark:bg-dark-bg-secondary dark:hover:border-dark-border-primary dark:hover:bg-dark-bg-tertiary'
                 }`}
-                onClick={() => navigate(`/notes/${note.id}`)}
+                onClick={() => {
+                  setNoteMenuOpenId(null)
+                  navigate(`/notes/${note.id}`)
+                }}
               >
                 <div className="flex items-start justify-between">
-                  <h3 className="font-medium text-neutral-900 dark:text-dark-text-primary line-clamp-1">
-                    {note.title}
-                  </h3>
+                  <div className="min-w-0">
+                    <h3 className="line-clamp-1 font-semibold text-neutral-900 dark:text-dark-text-primary">
+                      {note.title}
+                    </h3>
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-500 dark:text-dark-text-tertiary">
+                      {notePreview(note) || 'No content'}
+                    </p>
+                  </div>
+                  <div className="ml-2 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setNoteMenuOpenId(noteMenuOpenId === note.id ? null : note.id)
+                      }}
+                      className="rounded-md p-1.5 text-neutral-400 opacity-100 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-dark-bg-primary dark:hover:text-dark-text-primary sm:opacity-0 sm:group-hover:opacity-100"
+                      aria-label={`More actions for ${note.title}`}
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-medium text-neutral-400 dark:text-dark-text-tertiary">
+                    {formatNoteDate(note.updated_at)}
+                  </span>
                   {note.is_auto_generated && (
                     <Badge variant="info" size="sm">Auto</Badge>
                   )}
                 </div>
-                <p className="text-xs text-neutral-500 dark:text-dark-text-tertiary mt-1 line-clamp-2">
-                  {note.content.substring(0, 100) || 'No content'}
-                </p>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-2 overflow-hidden">
                   {note.tags.slice(0, 3).map(tag => (
                     <Badge key={tag} variant="default" size="sm">{tag}</Badge>
                   ))}
                 </div>
+                {noteMenuOpenId === note.id && (
+                  <div
+                    className="absolute right-3 top-10 z-20 w-44 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg dark:border-dark-border-primary dark:bg-dark-bg-secondary"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNoteMenuOpenId(null)
+                        renameNote(note)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 dark:text-dark-text-primary dark:hover:bg-dark-bg-tertiary"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                      Rename
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNoteMenuOpenId(null)
+                        deleteNote(note)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </button>
+                  </div>
+                )}
               </motion.div>
             ))
           )}
         </div>
 
         {allTags.length > 0 && (
-          <div className="p-4 border-t border-neutral-200 dark:border-dark-border">
+          <div className="hidden border-t border-neutral-200 p-4 dark:border-dark-border-primary lg:block">
             <h4 className="text-xs font-medium text-neutral-500 dark:text-dark-text-tertiary mb-2 flex items-center gap-1">
               <Tag className="w-3 h-3" />
               Tags
@@ -398,58 +553,61 @@ export default function Notes() {
         {currentNote ? (
           <>
             {/* Toolbar */}
-            <div className="h-14 border-b border-neutral-200 dark:border-dark-border bg-white dark:bg-dark-bg-secondary flex items-center justify-between px-4">
-              <div className="flex items-center gap-2">
+            <div className="border-b border-neutral-200 bg-white px-4 py-3 dark:border-dark-border-primary dark:bg-dark-bg-secondary">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
                 <Button variant="ghost" size="sm" onClick={() => navigate('/notes')}>
                   <ArrowLeft className="w-4 h-4" />
                 </Button>
-                <input
-                  type="text"
-                  value={currentNote.title}
-                  onChange={(e) => setCurrentNote({ ...currentNote, title: e.target.value })}
-                  onBlur={() => updateNote({ title: currentNote.title })}
-                  className="font-semibold text-neutral-900 dark:text-dark-text-primary bg-transparent border-none focus:outline-none focus:ring-0 min-w-[200px]"
-                />
+                <div className="min-w-0">
+                  <h2 className="truncate font-heading text-lg font-bold text-neutral-950 dark:text-dark-text-primary">
+                    {currentNote.title}
+                  </h2>
+                  <p className="mt-0.5 text-xs text-neutral-400 dark:text-dark-text-tertiary">
+                    Updated {formatNoteDate(currentNote.updated_at) || 'recently'}
+                  </p>
+                </div>
                 {isSaving && (
-                  <span className="text-xs text-neutral-400 flex items-center gap-1">
+                  <span className="hidden items-center gap-1 text-xs text-neutral-400 sm:flex">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Saving...
                   </span>
                 )}
-              </div>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <div className="flex bg-neutral-100 dark:bg-dark-bg-tertiary rounded-lg p-1">
+                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex rounded-lg border border-neutral-200 bg-neutral-100 p-1 dark:border-dark-border-primary dark:bg-dark-bg-tertiary">
                   <button
                     onClick={() => setViewMode('edit')}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                       viewMode === 'edit'
-                        ? 'bg-white dark:bg-dark-bg-secondary shadow-sm'
-                        : 'text-neutral-500 hover:text-neutral-700'
+                        ? 'bg-white text-primary shadow-sm dark:bg-dark-bg-secondary dark:text-primary-dark'
+                        : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-dark-text-primary'
                     }`}
                   >
-                    <Edit3 className="w-3.5 h-3.5 inline mr-1" />
+                    <Edit3 className="w-3.5 h-3.5" />
                     Edit
                   </button>
                   <button
                     onClick={() => setViewMode('split')}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                       viewMode === 'split'
-                        ? 'bg-white dark:bg-dark-bg-secondary shadow-sm'
-                        : 'text-neutral-500 hover:text-neutral-700'
+                        ? 'bg-white text-primary shadow-sm dark:bg-dark-bg-secondary dark:text-primary-dark'
+                        : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-dark-text-primary'
                     }`}
                   >
+                    <Columns className="w-3.5 h-3.5" />
                     Split
                   </button>
                   <button
                     onClick={() => setViewMode('preview')}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                       viewMode === 'preview'
-                        ? 'bg-white dark:bg-dark-bg-secondary shadow-sm'
-                        : 'text-neutral-500 hover:text-neutral-700'
+                        ? 'bg-white text-primary shadow-sm dark:bg-dark-bg-secondary dark:text-primary-dark'
+                        : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-dark-text-primary'
                     }`}
                   >
-                    <Eye className="w-3.5 h-3.5 inline mr-1" />
+                    <Eye className="w-3.5 h-3.5" />
                     Preview
                   </button>
                 </div>
@@ -457,56 +615,113 @@ export default function Notes() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowGraph(true)}
-                  className={showGraph ? 'text-primary-600' : ''}
+                  onClick={() => setShowDetailsPanel((value) => !value)}
+                  className="hidden xl:inline-flex"
+                  title={showDetailsPanel ? 'Hide linked notes' : 'Show linked notes'}
                 >
-                  <Network className="w-4 h-4" />
+                  {showDetailsPanel ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
                 </Button>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowMindMap(true)}
-                  className={showMindMap ? 'text-primary-600' : ''}
-                >
-                  <GitBranch className="w-4 h-4" />
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={generateMindmapFromNote}
-                  disabled={artifactLoading !== null}
-                >
-                  {artifactLoading === 'mindmap' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Network className="w-4 h-4" />}
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={generateFlashcardsFromNote}
-                  disabled={artifactLoading !== null}
-                >
-                  {artifactLoading === 'flashcards' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                </Button>
-
-                <Button variant="ghost" size="sm" onClick={() => deleteNote(currentNote.id)}>
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                </Button>
+                <div className="relative">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setToolbarMenuOpen((value) => !value)}
+                    title="More note actions"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                  {toolbarMenuOpen && (
+                    <div className="absolute right-0 top-full z-30 mt-2 w-56 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg dark:border-dark-border-primary dark:bg-dark-bg-secondary">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setToolbarMenuOpen(false)
+                          renameNote(currentNote)
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 dark:text-dark-text-primary dark:hover:bg-dark-bg-tertiary"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                        Rename
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setToolbarMenuOpen(false)
+                          setShowGraph(true)
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 dark:text-dark-text-primary dark:hover:bg-dark-bg-tertiary"
+                      >
+                        <Network className="h-4 w-4" />
+                        Open graph
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setToolbarMenuOpen(false)
+                          setShowMindMap(true)
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 dark:text-dark-text-primary dark:hover:bg-dark-bg-tertiary"
+                      >
+                        <GitBranch className="h-4 w-4" />
+                        Open note map
+                      </button>
+                      <div className="my-1 border-t border-neutral-100 dark:border-dark-border-primary" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setToolbarMenuOpen(false)
+                          generateMindmapFromNote()
+                        }}
+                        disabled={artifactLoading !== null}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 dark:text-dark-text-primary dark:hover:bg-dark-bg-tertiary"
+                      >
+                        {artifactLoading === 'mindmap' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Network className="h-4 w-4" />}
+                        Generate mindmap
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setToolbarMenuOpen(false)
+                          generateFlashcardsFromNote()
+                        }}
+                        disabled={artifactLoading !== null}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 dark:text-dark-text-primary dark:hover:bg-dark-bg-tertiary"
+                      >
+                        {artifactLoading === 'flashcards' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                        Generate flashcards
+                      </button>
+                      <div className="my-1 border-t border-neutral-100 dark:border-dark-border-primary" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setToolbarMenuOpen(false)
+                          deleteNote(currentNote)
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+                </div>
               </div>
             </div>
 
             {/* Editor Area */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 overflow-hidden bg-neutral-50 dark:bg-dark-bg-primary">
+              <div className={`h-full ${viewMode === 'split' ? 'grid grid-cols-1 lg:grid-cols-2' : 'flex'}`}>
               {(viewMode === 'edit' || viewMode === 'split') && (
-                <div className={`relative ${viewMode === 'split' ? 'w-1/2 border-r' : 'flex-1'} border-neutral-200 dark:border-dark-border`}>
+                <div className={`relative min-h-[34rem] ${viewMode === 'split' ? 'border-b border-neutral-200 dark:border-dark-border-primary lg:border-b-0 lg:border-r' : 'flex-1'}`}>
                   <textarea
                     ref={editorRef}
                     value={currentNote.content}
                     onChange={handleContentChange}
                     onBlur={() => updateNote({ content: currentNote.content })}
-                    placeholder="Start writing... Use [[note title]] to link notes"
-                    className="w-full h-full p-4 resize-none focus:outline-none bg-white dark:bg-dark-bg-primary text-neutral-900 dark:text-dark-text-primary font-mono text-sm leading-relaxed"
+                    placeholder="Start writing your note..."
+                    className="h-full min-h-[34rem] w-full resize-none bg-white p-6 font-mono text-sm leading-7 text-neutral-900 outline-none dark:bg-dark-bg-secondary dark:text-dark-text-primary"
                     spellCheck={false}
                   />
 
@@ -541,77 +756,117 @@ export default function Notes() {
               )}
 
               {(viewMode === 'preview' || viewMode === 'split') && (
-                <div className={`${viewMode === 'split' ? 'w-1/2' : 'flex-1'} overflow-y-auto`}>
-                  <div className="p-4 prose prose-sm dark:prose-invert max-w-none">
+                <div className="flex-1 overflow-y-auto bg-white dark:bg-dark-bg-secondary">
+                  <div className="prose prose-sm max-w-none p-6 dark:prose-invert">
                     {currentNote.content ? (
                       renderMarkdown(currentNote.content)
                     ) : (
-                      <p className="text-neutral-400 italic">Nothing to preview yet...</p>
+                      <div className="flex min-h-[26rem] flex-col items-center justify-center rounded-lg border border-dashed border-neutral-200 bg-neutral-50 px-6 py-10 text-center not-prose dark:border-dark-border-primary dark:bg-dark-bg-tertiary">
+                        <Eye className="mb-4 h-12 w-12 text-neutral-300 dark:text-dark-text-tertiary" />
+                        <h3 className="font-heading text-lg font-bold text-neutral-900 dark:text-dark-text-primary">Nothing to preview yet</h3>
+                        <p className="mt-2 max-w-sm text-sm text-neutral-500 dark:text-dark-text-secondary">
+                          Switch to Edit mode and start writing your note.
+                        </p>
+                        <Button className="mt-5" size="sm" onClick={() => setViewMode('edit')}>
+                          Start Editing
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
+          <div className="flex flex-1 items-center justify-center bg-white dark:bg-dark-bg-secondary">
+            <div className="max-w-sm rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-8 text-center dark:border-dark-border-primary dark:bg-dark-bg-tertiary">
               <FileText className="w-16 h-16 mx-auto mb-4 text-neutral-300" />
-              <p className="text-neutral-500 dark:text-dark-text-tertiary">
+              <p className="font-semibold text-neutral-900 dark:text-dark-text-primary">No note selected</p>
+              <p className="mt-2 text-sm text-neutral-500 dark:text-dark-text-tertiary">
                 Select a note or create a new one
               </p>
+              <Button className="mt-5" onClick={createNote}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create note
+              </Button>
             </div>
           </div>
         )}
       </div>
 
       {/* Right Panel - Backlinks & Info */}
-      {currentNote && (
-        <div className="w-72 bg-white dark:bg-dark-bg-secondary border-l border-neutral-200 dark:border-dark-border flex flex-col">
-          <div className="p-4 border-b border-neutral-200 dark:border-dark-border">
-            <h3 className="font-medium text-neutral-900 dark:text-dark-text-primary flex items-center gap-2">
-              <GitBranch className="w-4 h-4" />
-              Linked Notes
-            </h3>
+      {currentNote && showDetailsPanel && (
+        <div className="hidden w-[20rem] flex-col border-l border-neutral-200 bg-white dark:border-dark-border-primary dark:bg-dark-bg-secondary xl:flex">
+          <div className="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-dark-border-primary">
+            <div>
+              <h3 className="font-semibold text-neutral-900 dark:text-dark-text-primary flex items-center gap-2">
+                <GitBranch className="w-4 h-4 text-primary dark:text-primary-dark" />
+                Linked Notes
+              </h3>
+              <p className="mt-1 text-xs text-neutral-500 dark:text-dark-text-secondary">
+                Connections and note details.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDetailsPanel(false)}
+              className="rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-dark-bg-tertiary dark:hover:text-dark-text-primary"
+              aria-label="Hide linked notes panel"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4">
+            {!hasLinkedNotes && (
+              <div className="mb-6 rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-4 text-center dark:border-dark-border-primary dark:bg-dark-bg-tertiary">
+                <LinkIcon className="mx-auto mb-3 h-8 w-8 text-neutral-300 dark:text-dark-text-tertiary" />
+                <p className="text-sm font-semibold text-neutral-900 dark:text-dark-text-primary">No linked notes yet</p>
+                <p className="mt-1 text-xs leading-5 text-neutral-500 dark:text-dark-text-secondary">
+                  Use [[note name]] to connect notes.
+                </p>
+              </div>
+            )}
+
             {/* Outgoing Links */}
-            {currentNote.outgoing_links && currentNote.outgoing_links.length > 0 && (
-              <div className="mb-6">
-                <h4 className="text-xs font-medium text-neutral-500 dark:text-dark-text-tertiary mb-2">
-                  Outgoing Links ({currentNote.outgoing_links.length})
-                </h4>
+            <div className="mb-6">
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-widest text-neutral-400 dark:text-dark-text-tertiary">
+                Outgoing Links ({currentNote.outgoing_links?.length || 0})
+              </h4>
+              {currentNote.outgoing_links && currentNote.outgoing_links.length > 0 ? (
                 <div className="space-y-2">
                   {currentNote.outgoing_links.map(linkedNote => (
                     <button
                       key={linkedNote.id}
                       onClick={() => navigate(`/notes/${linkedNote.id}`)}
-                      className="w-full text-left p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-bg-tertiary text-sm text-primary-600 dark:text-primary-400"
+                      className="w-full rounded-lg border border-neutral-100 p-2 text-left text-sm text-primary transition hover:border-primary-muted hover:bg-primary-muted/50 dark:border-dark-border-primary dark:text-primary-dark dark:hover:bg-primary/10"
                     >
-                      <LinkIcon className="w-3 h-3 inline mr-1" />
+                      <LinkIcon className="mr-1 inline h-3 w-3" />
                       {linkedNote.title}
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-neutral-500 dark:text-dark-text-secondary">No outgoing links.</p>
+              )}
+            </div>
 
             {/* Backlinks */}
-            {backlinks.length > 0 && (
-              <div className="mb-6">
-                <h4 className="text-xs font-medium text-neutral-500 dark:text-dark-text-tertiary mb-2">
-                  Backlinks ({backlinks.length})
-                </h4>
+            <div className="mb-6">
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-widest text-neutral-400 dark:text-dark-text-tertiary">
+                Backlinks ({backlinks.length})
+              </h4>
+              {backlinks.length > 0 ? (
                 <div className="space-y-2">
                   {backlinks.map(backlink => (
                     <button
                       key={backlink.id}
                       onClick={() => navigate(`/notes/${backlink.id}`)}
-                      className="w-full text-left p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-bg-tertiary"
+                      className="w-full rounded-lg border border-neutral-100 p-2 text-left transition hover:border-primary-muted hover:bg-neutral-50 dark:border-dark-border-primary dark:hover:bg-dark-bg-tertiary"
                     >
-                      <p className="text-sm text-primary-600 dark:text-primary-400">
-                        <LinkIcon className="w-3 h-3 inline mr-1" />
+                      <p className="text-sm font-medium text-primary dark:text-primary-dark">
+                        <LinkIcon className="mr-1 inline h-3 w-3" />
                         {backlink.title}
                       </p>
                       <p className="text-xs text-neutral-500 dark:text-dark-text-tertiary mt-1 line-clamp-2">
@@ -620,22 +875,38 @@ export default function Notes() {
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-neutral-500 dark:text-dark-text-secondary">No backlinks yet.</p>
+              )}
+            </div>
 
             {/* Metadata */}
-            <div className="border-t border-neutral-200 dark:border-dark-border pt-4">
-              <h4 className="text-xs font-medium text-neutral-500 dark:text-dark-text-tertiary mb-2">
+            <div className="border-t border-neutral-200 pt-4 dark:border-dark-border-primary">
+              <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-neutral-400 dark:text-dark-text-tertiary">
+                <Info className="h-3.5 w-3.5" />
                 Metadata
               </h4>
-              <div className="space-y-1 text-xs text-neutral-600 dark:text-dark-text-tertiary">
-                <p>Created: {new Date(currentNote.created_at).toLocaleDateString()}</p>
-                <p>Updated: {new Date(currentNote.updated_at).toLocaleDateString()}</p>
+              <div className="space-y-3 text-xs text-neutral-600 dark:text-dark-text-tertiary">
+                <p className="flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 text-neutral-400" />
+                  Created {new Date(currentNote.created_at).toLocaleDateString()}
+                </p>
+                <p className="flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 text-neutral-400" />
+                  Updated {new Date(currentNote.updated_at).toLocaleDateString()}
+                </p>
                 {currentNote.goal_id && (
                   <p>Goal: {goals.find(g => g.id === currentNote.goal_id)?.title || 'Unknown'}</p>
                 )}
                 {currentNote.is_auto_generated && (
                   <p className="text-amber-600">Auto-generated</p>
+                )}
+                {currentNote.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {currentNote.tags.map((tag) => (
+                      <Badge key={tag} variant="default" size="sm">{tag}</Badge>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
@@ -668,6 +939,48 @@ export default function Notes() {
           onClose={() => setShowMindMap(false)}
         />
       )}
+
+      <InputDialog
+        isOpen={createDialogOpen}
+        title="Create New Note"
+        inputLabel="Note title"
+        placeholder="e.g., React Hooks Summary"
+        confirmLabel="Create Note"
+        loading={creatingNote}
+        validationError={createError}
+        onConfirm={confirmCreateNote}
+        onCancel={() => {
+          if (!creatingNote) setCreateDialogOpen(false)
+        }}
+      />
+
+      <InputDialog
+        isOpen={Boolean(renameTarget)}
+        title="Rename Note"
+        description="Give this note a clear, searchable title."
+        inputLabel="Note title"
+        defaultValue={renameTarget?.title || ''}
+        confirmLabel="Rename"
+        loading={renamingNote}
+        validationError={renameError}
+        onConfirm={confirmRenameNote}
+        onCancel={() => {
+          if (!renamingNote) setRenameTarget(null)
+        }}
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(deleteTarget)}
+        title="Delete note?"
+        description={`This will permanently delete "${deleteTarget?.title || 'this note'}" and remove its note links.`}
+        confirmLabel="Delete"
+        destructive
+        loading={deletingNote}
+        onConfirm={confirmDeleteNote}
+        onCancel={() => {
+          if (!deletingNote) setDeleteTarget(null)
+        }}
+      />
     </div>
   )
 }

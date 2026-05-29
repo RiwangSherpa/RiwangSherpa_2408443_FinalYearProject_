@@ -2,13 +2,14 @@
 Gamification Service - Achievement Engine and XP System
 """
 
-import json
 from typing import List, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
 from app import models
+from app.services.email_service import send_achievement_emails_async
 
 
 class AchievementEngine:
@@ -17,69 +18,54 @@ class AchievementEngine:
     """
     
     DEFAULT_ACHIEVEMENTS = [
-        {"name": "Getting Started", "description": "Spend 10 minutes studying", 
-         "category": "study", "difficulty": "bronze", "xp": 20,
-         "trigger": {"type": "total_study_hours", "threshold": 0.17}},
-        
-        {"name": "First Steps", "description": "Complete your first study session", 
-         "category": "study", "difficulty": "bronze", "xp": 50,
-         "trigger": {"type": "study_sessions", "threshold": 1}},
-        
-        {"name": "Study Starter", "description": "Study for 1 hour total", 
-         "category": "study", "difficulty": "bronze", "xp": 100,
-         "trigger": {"type": "total_study_hours", "threshold": 1}},
-        
-        {"name": "Week Warrior", "description": "Study for 5 consecutive days", 
-         "category": "streak", "difficulty": "silver", "xp": 150,
-         "trigger": {"type": "streak_days", "threshold": 5}},
-        
-        {"name": "Consistent Learner", "description": "Maintain a 7-day study streak", 
-         "category": "streak", "difficulty": "silver", "xp": 300,
-         "trigger": {"type": "streak_days", "threshold": 7}},
-        
-        {"name": "First Quiz Attempt", "description": "Attempt any quiz", 
-         "category": "quiz", "difficulty": "bronze", "xp": 30,
-         "trigger": {"type": "quizzes_completed", "threshold": 1}},
-        
-        {"name": "Quiz Novice", "description": "Complete your first quiz", 
+        {"name": "First Steps", "description": "Complete your first roadmap step",
+         "category": "roadmap", "difficulty": "bronze", "xp": 50,
+         "trigger": {"type": "roadmap_step", "threshold": 1}},
+        {"name": "Goal Getter", "description": "Complete your first learning goal",
+         "category": "goal", "difficulty": "silver", "xp": 200,
+         "trigger": {"type": "goals_completed", "threshold": 1}},
+        {"name": "Overachiever", "description": "Complete 5 learning goals",
+         "category": "goal", "difficulty": "gold", "xp": 400,
+         "trigger": {"type": "goals_completed", "threshold": 5}},
+        {"name": "Quiz Starter", "description": "Complete your first quiz",
          "category": "quiz", "difficulty": "bronze", "xp": 50,
          "trigger": {"type": "quizzes_completed", "threshold": 1}},
-        
-        {"name": "Quiz Master", "description": "Complete 3 quizzes", 
+        {"name": "Quiz Master", "description": "Complete 5 quizzes",
          "category": "quiz", "difficulty": "silver", "xp": 150,
-         "trigger": {"type": "quizzes_completed", "threshold": 3}},
-        
-        {"name": "Perfect Score", "description": "Score 100% on any quiz", 
+         "trigger": {"type": "quizzes_completed", "threshold": 5}},
+        {"name": "Perfect Score", "description": "Score 100% on any quiz",
          "category": "quiz", "difficulty": "gold", "xp": 200,
          "trigger": {"type": "perfect_quiz", "threshold": 1}},
-        
-        {"name": "First Step", "description": "Complete your first roadmap step", 
-         "category": "roadmap", "difficulty": "bronze", "xp": 30,
-         "trigger": {"type": "roadmap_step", "threshold": 1}},
-        
-        {"name": "Roadmap Beginner", "description": "Complete your first roadmap step", 
-         "category": "roadmap", "difficulty": "bronze", "xp": 75,
-         "trigger": {"type": "roadmap_step", "threshold": 1}},
-        
-        {"name": "First Goal", "description": "Complete your first learning goal", 
-         "category": "goal", "difficulty": "silver", "xp": 200,
-         "trigger": {"type": "goals_completed", "threshold": 1}},
-        
-        {"name": "Goal Getter", "description": "Complete your first learning goal", 
-         "category": "goal", "difficulty": "silver", "xp": 200,
-         "trigger": {"type": "goals_completed", "threshold": 1}},
-        
-        {"name": "Overachiever", "description": "Complete 3 learning goals", 
-         "category": "goal", "difficulty": "gold", "xp": 400,
-         "trigger": {"type": "goals_completed", "threshold": 3}},
-        
-        {"name": "Quick Learner", "description": "Complete 2 steps in a day", 
-         "category": "roadmap", "difficulty": "silver", "xp": 50,
-         "trigger": {"type": "daily_steps", "threshold": 2}},
-        
-        {"name": "Halfway There", "description": "Complete 50% of a goal", 
-         "category": "roadmap", "difficulty": "silver", "xp": 75,
-         "trigger": {"type": "goal_50_percent", "threshold": 1}},
+        {"name": "Consistent Learner", "description": "Maintain a 7-day study streak",
+         "category": "streak", "difficulty": "silver", "xp": 150,
+         "trigger": {"type": "streak_days", "threshold": 7}},
+        {"name": "Week Warrior", "description": "Study for 7 consecutive days",
+         "category": "streak", "difficulty": "silver", "xp": 150,
+         "trigger": {"type": "streak_days", "threshold": 7}},
+        {"name": "Study Starter", "description": "Study for 10 total hours",
+         "category": "study", "difficulty": "bronze", "xp": 100,
+         "trigger": {"type": "total_study_hours", "threshold": 10}},
+        {"name": "Focus Legend", "description": "Study for 30 total hours",
+         "category": "study", "difficulty": "gold", "xp": 300,
+         "trigger": {"type": "total_study_hours", "threshold": 30}},
+        {"name": "Note Taker", "description": "Create your first note",
+         "category": "notes", "difficulty": "bronze", "xp": 50,
+         "trigger": {"type": "notes_created", "threshold": 1}},
+        {"name": "Knowledge Builder", "description": "Create 10 notes",
+         "category": "notes", "difficulty": "silver", "xp": 200,
+         "trigger": {"type": "notes_created", "threshold": 10}},
+        {"name": "Brainstorm Beginner", "description": "Create your first brainstorm session",
+         "category": "brainstorm", "difficulty": "bronze", "xp": 75,
+         "trigger": {"type": "brainstorm_sessions", "threshold": 1}},
+        {"name": "File Explorer", "description": "Upload your first study file",
+         "category": "files", "difficulty": "bronze", "xp": 75,
+         "trigger": {"type": "file_uploads", "threshold": 1}},
+        {"name": "Flashcard Rookie", "description": "Generate your first flashcard deck",
+         "category": "flashcards", "difficulty": "bronze", "xp": 75,
+         "trigger": {"type": "flashcard_decks", "threshold": 1}},
+        {"name": "Mindmap Maker", "description": "Generate your first mindmap",
+         "category": "mindmaps", "difficulty": "bronze", "xp": 75,
+         "trigger": {"type": "mindmaps", "threshold": 1}},
     ]
     
     def __init__(self, db: Session):
@@ -87,7 +73,7 @@ class AchievementEngine:
         self._initialize_default_achievements()
     
     def _initialize_default_achievements(self):
-        """Create default achievements if they don't exist, remove old ones"""
+        """Create or update the supported achievements exactly once."""
         existing_achievements = {a.name: a for a in self.db.query(models.Achievement).all()}
         default_names = {ach["name"] for ach in self.DEFAULT_ACHIEVEMENTS}
         
@@ -99,7 +85,15 @@ class AchievementEngine:
                 self.db.delete(achievement)
         
         for ach_data in self.DEFAULT_ACHIEVEMENTS:
-            if ach_data["name"] not in existing_achievements:
+            achievement = existing_achievements.get(ach_data["name"])
+            if achievement:
+                achievement.description = ach_data["description"]
+                achievement.category = ach_data["category"]
+                achievement.difficulty = ach_data["difficulty"]
+                achievement.xp_reward = ach_data["xp"]
+                achievement.trigger_condition = ach_data["trigger"]
+                achievement.is_hidden = ach_data.get("hidden", False)
+            else:
                 achievement = models.Achievement(
                     name=ach_data["name"],
                     description=ach_data["description"],
@@ -137,6 +131,83 @@ class GamificationService:
             self.db.refresh(stats)
         
         return stats
+
+    def sync_stats_from_db(self, user_id: int) -> models.UserStats:
+        """Rebuild derived counters from persisted user activity."""
+        stats = self.get_or_create_user_stats(user_id)
+        user_goal_ids = [
+            goal_id for (goal_id,) in self.db.query(models.Goal.id).filter(
+                models.Goal.user_id == user_id
+            ).all()
+        ]
+
+        total_minutes = self.db.query(func.sum(models.StudyStreak.study_time_minutes)).filter(
+            models.StudyStreak.user_id == user_id
+        ).scalar() or 0.0
+        stats.total_study_hours = float(total_minutes) / 60.0
+        stats.total_study_sessions = self.db.query(models.StudyStreak).filter(
+            models.StudyStreak.user_id == user_id,
+            models.StudyStreak.study_time_minutes > 0
+        ).count()
+
+        if user_goal_ids:
+            stats.total_quizzes_taken = self.db.query(models.QuizResult).filter(
+                models.QuizResult.goal_id.in_(user_goal_ids)
+            ).count()
+            stats.total_questions_answered = self.db.query(func.sum(models.QuizResult.total_questions)).filter(
+                models.QuizResult.goal_id.in_(user_goal_ids)
+            ).scalar() or 0
+            stats.perfect_quiz_count = self.db.query(models.QuizResult).filter(
+                models.QuizResult.goal_id.in_(user_goal_ids),
+                models.QuizResult.score >= 100
+            ).count()
+            stats.roadmap_steps_completed = self.db.query(models.RoadmapStep).filter(
+                models.RoadmapStep.goal_id.in_(user_goal_ids),
+                models.RoadmapStep.is_completed == True
+            ).count()
+        else:
+            stats.total_quizzes_taken = 0
+            stats.total_questions_answered = 0
+            stats.perfect_quiz_count = 0
+            stats.roadmap_steps_completed = 0
+
+        stats.goals_completed = self.db.query(models.Goal).filter(
+            models.Goal.user_id == user_id,
+            models.Goal.is_completed == True
+        ).count()
+        stats.longest_streak = self._calculate_longest_streak(user_id)
+
+        stats.total_xp = self._earned_achievement_xp(user_id)
+        stats.current_level = self._calculate_level(stats.total_xp)
+        self.db.commit()
+        self.db.refresh(stats)
+        return stats
+
+    def _earned_achievement_xp(self, user_id: int) -> int:
+        return self.db.query(func.sum(models.Achievement.xp_reward)).join(
+            models.UserAchievement,
+            models.UserAchievement.achievement_id == models.Achievement.id
+        ).filter(models.UserAchievement.user_id == user_id).scalar() or 0
+
+    def _calculate_longest_streak(self, user_id: int) -> int:
+        streak_dates = [
+            row[0] for row in self.db.query(func.date(models.StudyStreak.date)).filter(
+                models.StudyStreak.user_id == user_id,
+                models.StudyStreak.study_time_minutes > 0
+            ).distinct().order_by(func.date(models.StudyStreak.date)).all()
+        ]
+        longest = 0
+        current = 0
+        previous_date = None
+        for raw_date in streak_dates:
+            current_date = datetime.fromisoformat(str(raw_date)).date()
+            if previous_date and current_date == previous_date + timedelta(days=1):
+                current += 1
+            else:
+                current = 1
+            longest = max(longest, current)
+            previous_date = current_date
+        return longest
     
     def add_xp(self, user_id: int, amount: int, source: str = "general") -> Dict:
         """
@@ -145,7 +216,7 @@ class GamificationService:
         Returns:
             Dict with new XP, level, and whether level up occurred
         """
-        stats = self.get_or_create_user_stats(user_id)
+        stats = self.sync_stats_from_db(user_id)
         
         old_level = stats.current_level
         stats.total_xp += amount
@@ -186,7 +257,7 @@ class GamificationService:
     
     def get_level_progress(self, user_id: int) -> Dict:
         """Get current level progress for user"""
-        stats = self.get_or_create_user_stats(user_id)
+        stats = self.sync_stats_from_db(user_id)
         
         xp_for_current = 0
         for level in range(1, stats.current_level):
@@ -213,7 +284,7 @@ class GamificationService:
             List of newly earned achievements
         """
         new_achievements = []
-        stats = self.get_or_create_user_stats(user_id)
+        stats = self.sync_stats_from_db(user_id)
         
         all_achievements = self.db.query(models.Achievement).all()
         
@@ -233,9 +304,14 @@ class GamificationService:
                     user_id=user_id,
                     achievement_id=achievement.id
                 )
-                self.db.add(user_achievement)
-                
-                self.add_xp(user_id, achievement.xp_reward, f"achievement_{achievement.name}")
+                try:
+                    self.db.add(user_achievement)
+                    self.db.flush()
+                except IntegrityError:
+                    self.db.rollback()
+                    earned_ids.add(achievement.id)
+                    continue
+                earned_ids.add(achievement.id)
                 
                 new_achievements.append({
                     "achievement_id": achievement.id,
@@ -248,6 +324,8 @@ class GamificationService:
         
         if new_achievements:
             self.db.commit()
+            self.sync_stats_from_db(user_id)
+            send_achievement_emails_async(self.db, user_id, new_achievements)
         
         return new_achievements
     
@@ -277,6 +355,31 @@ class GamificationService:
         
         elif trigger_type == "roadmap_step":
             return stats.roadmap_steps_completed >= threshold
+
+        elif trigger_type == "notes_created":
+            return self.db.query(models.Note).filter(
+                models.Note.user_id == user_id
+            ).count() >= threshold
+
+        elif trigger_type == "brainstorm_sessions":
+            return self.db.query(models.BrainstormSession).filter(
+                models.BrainstormSession.user_id == user_id
+            ).count() >= threshold
+
+        elif trigger_type == "file_uploads":
+            return self.db.query(models.BrainstormFile).filter(
+                models.BrainstormFile.user_id == user_id
+            ).count() >= threshold
+
+        elif trigger_type == "flashcard_decks":
+            return self.db.query(models.FlashcardDeck).filter(
+                models.FlashcardDeck.user_id == user_id
+            ).count() >= threshold
+
+        elif trigger_type == "mindmaps":
+            return self.db.query(models.Mindmap).filter(
+                models.Mindmap.user_id == user_id
+            ).count() >= threshold
         
         elif trigger_type == "daily_steps":
             from datetime import datetime, timedelta
@@ -310,27 +413,8 @@ class GamificationService:
     
     def update_stats_from_activity(self, user_id: int, activity_type: str, 
                                    value: float = 1.0) -> None:
-        """Update user stats based on activity"""
-        stats = self.get_or_create_user_stats(user_id)
-        
-        if activity_type == "study_session":
-            stats.total_study_sessions += 1
-            stats.total_study_hours += value
-        
-        elif activity_type == "quiz_completed":
-            stats.total_quizzes_taken += 1
-            stats.total_questions_answered += int(value)
-        
-        elif activity_type == "perfect_quiz":
-            stats.perfect_quiz_count += 1
-        
-        elif activity_type == "goal_completed":
-            stats.goals_completed += 1
-        
-        elif activity_type == "roadmap_step":
-            stats.roadmap_steps_completed += int(value)
-        
-        self.db.commit()
+        """Refresh derived stats after an activity mutation."""
+        self.sync_stats_from_db(user_id)
     
     def get_user_achievements(self, user_id: int) -> Dict:
         """Get all achievements for a user"""

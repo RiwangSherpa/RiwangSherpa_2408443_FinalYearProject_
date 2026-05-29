@@ -13,9 +13,14 @@ import {
 import { quizzesApi } from '../lib/api'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
+import QuestionContent from '../components/quiz/QuestionContent'
+import 'highlight.js/styles/github.css'
 
 interface QuizQuestion {
   question: string
+  code_snippet?: string | null
+  codeBlock?: string | null
+  code?: string | null
   options: string[]
   correct_answer: number
   explanation: string
@@ -175,9 +180,10 @@ export default function QuizReview() {
                     </div>
                     
                     <div className="flex-1">
-                      <p className="font-medium text-neutral-900 dark:text-dark-text-primary mb-3 transition-colors">
-                        {index + 1}. {question.question}
-                      </p>
+                      <div className="mb-3 font-medium text-neutral-900 dark:text-dark-text-primary transition-colors">
+                        <p className="mb-2">{index + 1}.</p>
+                        <QuestionContent question={question} />
+                      </div>
                       
                       <div className="space-y-2 mb-4">
                         {question.options.map((option, optIndex) => (

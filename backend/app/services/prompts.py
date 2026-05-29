@@ -86,22 +86,30 @@ REQUIREMENTS:
 4. Questions should test understanding, not just memorization
 5. Include a brief explanation for why the correct answer is right
 6. Questions should be progressive in difficulty within the quiz
-7. For coding questions, include the code snippet in the question text using proper formatting
+7. For coding questions, include the actual code in the separate "code_snippet" field
 
 SPECIAL INSTRUCTIONS FOR CODE QUESTIONS:
-- If the question involves code, INCLUDE THE ACTUAL CODE SNIPPET in the question text
-- Format code snippets using triple backticks with the appropriate language (e.g., ```python```)
-- IMPORTANT: Keep code snippets on ONE LINE to ensure valid JSON format
-- Example format: "What is the output of the following Python code snippet? ```python x = 5; y = 10; print(x + y) ```"
-- Use semicolons to separate statements instead of newlines
-- The code snippet MUST be included in the question text, not referenced separately
+- If the question involves code, INCLUDE THE ACTUAL CODE SNIPPET in "code_snippet".
+- The question text may say "What is the output of the following Python code?", but only when "code_snippet" is non-empty.
+- Preserve indentation and line breaks in code snippets by escaping newlines as \\n in JSON.
+- Do NOT create any question that references "following code", "code snippet", or "program below" unless a real code_snippet is provided.
+- Do NOT put only a placeholder like "[code here]" or "the above code".
+- Example:
+  {{
+    "question": "What is the output of the following Python code?",
+    "code_snippet": "text = \\"hello world\\"\\nprint(text[4:7])",
+    "options": ["\\"world\\"", "\\"o w\\"", "\\"rld\\"", "\\"o\\""],
+    "correct_answer": 1,
+    "explanation": "text[4:7] returns characters at indexes 4, 5, and 6."
+  }}
 
 OUTPUT FORMAT:
 Return STRICT JSON ONLY. Do not include markdown fences, comments, prose, or explanations outside JSON.
 Return a JSON array with this exact structure. CRITICAL: Ensure all strings are valid JSON strings - no unescaped newlines or quotes inside strings.
 [
   {{
-    "question": "Question text here? Include code snippets if applicable using proper markdown formatting on single lines.",
+    "question": "Question text here?",
+    "code_snippet": null,
     "options": ["Option A", "Option B", "Option C", "Option D"],
     "correct_answer": 0,
     "explanation": "Brief explanation of why this answer is correct and what it demonstrates about understanding."

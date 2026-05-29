@@ -25,7 +25,7 @@ export default function PricingSection() {
           >
             <p className="text-sm font-bold uppercase tracking-normal text-neutral-500 dark:text-neutral-400">Free</p>
             <div className="mt-4 flex items-end gap-2">
-              <span className="font-heading text-5xl font-extrabold tracking-normal text-neutral-950 dark:text-white">$0</span>
+              <span className="font-heading text-5xl font-extrabold tracking-normal text-neutral-950 dark:text-white">Rs. 0</span>
               <span className="pb-2 text-neutral-500 dark:text-neutral-400">/month</span>
             </div>
             <p className="mt-4 text-sm leading-7 text-neutral-600 dark:text-neutral-300">
@@ -64,7 +64,7 @@ export default function PricingSection() {
                 </span>
               </div>
               <div className="flex items-end gap-2">
-                <span className="font-heading text-5xl font-extrabold tracking-normal text-white">$9.99</span>
+                <span className="font-heading text-5xl font-extrabold tracking-normal text-white">Rs. 999</span>
                 <span className="pb-2 text-neutral-300">/month</span>
               </div>
               <p className="mt-4 text-sm leading-7 text-neutral-300">

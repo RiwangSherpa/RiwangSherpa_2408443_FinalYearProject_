@@ -152,6 +152,7 @@ async def google_callback(
                     is_active=True,
                     is_verified=True,
                     subscription_plan=models.SubscriptionPlan.FREE,
+                    email_notifications=False,
                 )
                 db.add(user)
                 db.commit()

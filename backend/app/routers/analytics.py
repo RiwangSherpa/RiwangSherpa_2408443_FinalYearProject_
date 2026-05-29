@@ -15,6 +15,7 @@ from app.database import get_db
 from app import models, schemas
 from app.dependencies import get_current_user
 from app.services.gamification import GamificationService
+from app.services.subscription_service import has_active_pro_subscription
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,10 @@ class ActivityData(BaseModel):
     title: str
     description: str
     timestamp: str
+    created_at: str
+    related_type: Optional[str] = None
+    related_id: Optional[int] = None
+    goal_id: Optional[int] = None
     goal_title: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
@@ -313,69 +318,300 @@ def get_strengths_weaknesses(db: Session, user_id: int) -> StrengthsWeaknessesDa
 
 def get_user_activity(db: Session, user_id: int, limit: int = 10) -> List[ActivityData]:
     """Get recent user activity for dashboard"""
-    activities = []
+    activities: List[ActivityData] = []
+
+    def iso(value: Any) -> str:
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if value is None:
+            return datetime.utcnow().isoformat()
+        return str(value)
+
+    safe_limit = max(1, min(limit, 50))
+    per_source_limit = max(safe_limit, 10)
     
     quiz_results = db.query(models.QuizResult).join(models.Goal).filter(
         models.Goal.user_id == user_id
-    ).order_by(models.QuizResult.completed_at.desc()).limit(5).all()
+    ).order_by(models.QuizResult.completed_at.desc()).limit(per_source_limit).all()
     
     for quiz in quiz_results:
+        timestamp = iso(quiz.completed_at)
         activities.append(ActivityData(
             id=f"quiz_{quiz.id}",
             type="quiz_attempt",
             title="Quiz Attempt",
             description=f"Scored {quiz.score:.0f}% on {quiz.topic}",
-            timestamp=quiz.completed_at.isoformat(),
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="quiz",
+            related_id=quiz.id,
+            goal_id=quiz.goal_id,
             goal_title=quiz.goal.title if quiz.goal else None,
-            metadata={"score": quiz.score, "topic": quiz.topic}
+            metadata={"score": quiz.score, "topic": quiz.topic, "total_questions": quiz.total_questions}
         ))
     
     progress_records = db.query(models.Progress).join(models.Goal).filter(
         models.Goal.user_id == user_id,
         models.Progress.time_spent_minutes > 0
-    ).order_by(models.Progress.date.desc()).limit(5).all()
+    ).order_by(models.Progress.date.desc()).limit(per_source_limit).all()
     
     for progress in progress_records:
+        timestamp = iso(progress.date)
         activities.append(ActivityData(
             id=f"progress_{progress.id}",
             type="study_session",
             title="Study Session",
             description=f"Studied for {progress.time_spent_minutes:.0f} minutes",
-            timestamp=progress.date.isoformat(),
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="goal",
+            related_id=progress.goal_id,
+            goal_id=progress.goal_id,
             goal_title=progress.goal.title if progress.goal else None,
             metadata={"minutes": progress.time_spent_minutes}
+        ))
+
+    completed_steps = db.query(models.RoadmapStep).join(models.Goal).filter(
+        models.Goal.user_id == user_id,
+        models.RoadmapStep.is_completed == True,
+        models.RoadmapStep.completed_at.isnot(None)
+    ).order_by(models.RoadmapStep.completed_at.desc()).limit(per_source_limit).all()
+
+    for step in completed_steps:
+        timestamp = iso(step.completed_at)
+        activities.append(ActivityData(
+            id=f"roadmap_step_{step.id}",
+            type="roadmap_step_completed",
+            title="Roadmap Step Completed",
+            description=f"Completed step {step.step_number}: {step.title}",
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="roadmap",
+            related_id=step.goal_id,
+            goal_id=step.goal_id,
+            goal_title=step.goal.title if step.goal else None,
+            metadata={"step_id": step.id, "step_number": step.step_number}
+        ))
+
+    roadmap_groups = db.query(
+        models.Goal.id.label("goal_id"),
+        models.Goal.title.label("goal_title"),
+        func.min(models.RoadmapStep.created_at).label("created_at"),
+        func.count(models.RoadmapStep.id).label("step_count")
+    ).join(models.RoadmapStep, models.RoadmapStep.goal_id == models.Goal.id).filter(
+        models.Goal.user_id == user_id
+    ).group_by(models.Goal.id, models.Goal.title).order_by(desc("created_at")).limit(per_source_limit).all()
+
+    for roadmap in roadmap_groups:
+        timestamp = iso(roadmap.created_at)
+        activities.append(ActivityData(
+            id=f"roadmap_generated_{roadmap.goal_id}",
+            type="roadmap_generated",
+            title="Roadmap Generated",
+            description=f"Created a {roadmap.step_count}-step roadmap",
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="roadmap",
+            related_id=roadmap.goal_id,
+            goal_id=roadmap.goal_id,
+            goal_title=roadmap.goal_title,
+            metadata={"step_count": roadmap.step_count}
         ))
     
     completed_goals = db.query(models.Goal).filter(
         models.Goal.user_id == user_id,
         models.Goal.is_completed == True
-    ).order_by(models.Goal.updated_at.desc()).limit(3).all()
+    ).order_by(models.Goal.updated_at.desc()).limit(per_source_limit).all()
     
     for goal in completed_goals:
+        timestamp = iso(goal.updated_at)
         activities.append(ActivityData(
             id=f"goal_completed_{goal.id}",
             type="goal_completed",
             title="Goal Completed",
             description=f"Completed goal: {goal.title}",
-            timestamp=goal.updated_at.isoformat(),
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="goal",
+            related_id=goal.id,
+            goal_id=goal.id,
             goal_title=goal.title,
             metadata={"goal_id": goal.id}
         ))
     
     new_goals = db.query(models.Goal).filter(
-        models.Goal.user_id == user_id,
-        models.Goal.is_completed == False
-    ).order_by(models.Goal.created_at.desc()).limit(3).all()
+        models.Goal.user_id == user_id
+    ).order_by(models.Goal.created_at.desc()).limit(per_source_limit).all()
     
     for goal in new_goals:
+        timestamp = iso(goal.created_at)
         activities.append(ActivityData(
             id=f"goal_created_{goal.id}",
             type="goal_created",
             title="Goal Created",
             description=f"Started learning: {goal.title}",
-            timestamp=goal.created_at.isoformat(),
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="goal",
+            related_id=goal.id,
+            goal_id=goal.id,
             goal_title=goal.title,
             metadata={"goal_id": goal.id}
+        ))
+
+    notes = db.query(models.Note).filter(
+        models.Note.user_id == user_id
+    ).order_by(models.Note.created_at.desc()).limit(per_source_limit).all()
+
+    for note in notes:
+        timestamp = iso(note.created_at)
+        activities.append(ActivityData(
+            id=f"note_{note.id}",
+            type="note_created",
+            title="Note Created",
+            description=note.title,
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="note",
+            related_id=note.id,
+            goal_id=note.goal_id,
+            goal_title=note.goal.title if note.goal else None,
+            metadata={"is_auto_generated": note.is_auto_generated}
+        ))
+
+    brainstorm_sessions = db.query(models.BrainstormSession).filter(
+        models.BrainstormSession.user_id == user_id
+    ).order_by(models.BrainstormSession.created_at.desc()).limit(per_source_limit).all()
+
+    for session in brainstorm_sessions:
+        timestamp = iso(session.created_at)
+        activities.append(ActivityData(
+            id=f"brainstorm_{session.id}",
+            type="brainstorm_created",
+            title="Brainstorm Session Created",
+            description=session.title,
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="brainstorm",
+            related_id=session.id,
+            metadata={"message_count": len(session.messages), "file_count": len(session.files)}
+        ))
+
+    files = db.query(models.BrainstormFile).filter(
+        models.BrainstormFile.user_id == user_id
+    ).order_by(models.BrainstormFile.created_at.desc()).limit(per_source_limit).all()
+
+    for file in files:
+        timestamp = iso(file.created_at)
+        activities.append(ActivityData(
+            id=f"file_{file.id}",
+            type="file_uploaded",
+            title="Study File Uploaded",
+            description=file.original_filename,
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="brainstorm",
+            related_id=file.session_id,
+            metadata={"file_type": file.file_type, "upload_status": file.upload_status}
+        ))
+
+    flashcard_decks = db.query(models.FlashcardDeck).filter(
+        models.FlashcardDeck.user_id == user_id
+    ).order_by(models.FlashcardDeck.created_at.desc()).limit(per_source_limit).all()
+
+    for deck in flashcard_decks:
+        timestamp = iso(deck.created_at)
+        activities.append(ActivityData(
+            id=f"flashcard_deck_{deck.id}",
+            type="flashcard_deck_generated",
+            title="Flashcard Deck Generated",
+            description=deck.title,
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="flashcards",
+            related_id=deck.id,
+            metadata={"card_count": len(deck.cards), "source_type": deck.source_type}
+        ))
+
+    mindmaps = db.query(models.Mindmap).filter(
+        models.Mindmap.user_id == user_id
+    ).order_by(models.Mindmap.created_at.desc()).limit(per_source_limit).all()
+
+    for mindmap in mindmaps:
+        timestamp = iso(mindmap.created_at)
+        activities.append(ActivityData(
+            id=f"mindmap_{mindmap.id}",
+            type="mindmap_generated",
+            title="Mindmap Generated",
+            description=mindmap.title,
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="mindmap",
+            related_id=mindmap.id,
+            metadata={"source_type": mindmap.source_type}
+        ))
+
+    productivity_sessions = db.query(models.ProductivitySession).filter(
+        models.ProductivitySession.user_id == user_id,
+        models.ProductivitySession.was_completed == True
+    ).order_by(models.ProductivitySession.completed_at.desc()).limit(per_source_limit).all()
+
+    for session in productivity_sessions:
+        timestamp = iso(session.completed_at or session.started_at)
+        activities.append(ActivityData(
+            id=f"productivity_{session.id}",
+            type="productivity_session_completed",
+            title="Focus Session Completed",
+            description=f"Completed a {session.duration_minutes}-minute {session.session_type} session",
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="productivity",
+            related_id=session.id,
+            metadata={"minutes": session.duration_minutes, "session_type": session.session_type}
+        ))
+
+    study_streaks = db.query(models.StudyStreak).filter(
+        models.StudyStreak.user_id == user_id,
+        models.StudyStreak.study_time_minutes > 0
+    ).order_by(models.StudyStreak.date.desc()).limit(per_source_limit).all()
+
+    for streak in study_streaks:
+        timestamp = iso(streak.date)
+        activities.append(ActivityData(
+            id=f"study_time_{streak.id}",
+            type="study_time_tracked",
+            title="Study Time Tracked",
+            description=f"Studied for {streak.study_time_minutes:.0f} minutes",
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="progress",
+            related_id=streak.id,
+            metadata={"minutes": streak.study_time_minutes, "goals_worked_on": streak.goals_worked_on or []}
+        ))
+
+    earned_achievements = db.query(models.UserAchievement, models.Achievement).join(
+        models.Achievement,
+        models.Achievement.id == models.UserAchievement.achievement_id
+    ).filter(
+        models.UserAchievement.user_id == user_id
+    ).order_by(models.UserAchievement.earned_at.desc()).limit(per_source_limit).all()
+
+    for user_achievement, achievement in earned_achievements:
+        timestamp = iso(user_achievement.earned_at)
+        activities.append(ActivityData(
+            id=f"achievement_{user_achievement.id}",
+            type="achievement_unlocked",
+            title="Achievement Unlocked",
+            description=f"{achievement.name} (+{achievement.xp_reward} XP)",
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="achievement",
+            related_id=achievement.id,
+            metadata={
+                "achievement_name": achievement.name,
+                "xp_reward": achievement.xp_reward,
+                "category": achievement.category
+            }
         ))
     
     user_stats = db.query(models.UserStats).filter(
@@ -386,17 +622,25 @@ def get_user_activity(db: Session, user_id: int, limit: int = 10) -> List[Activi
         gamification_service = GamificationService(db)
         level_progress = gamification_service.get_level_progress(user_id)
         
+        timestamp = iso(user_stats.updated_at)
         activities.append(ActivityData(
             id=f"level_{user_stats.id}",
             type="level_up",
             title="Current Level",
             description=f"Level {level_progress['current_level']} with {level_progress['total_xp']} XP",
-            timestamp=user_stats.updated_at.isoformat() if user_stats.updated_at else datetime.now().isoformat(),
+            timestamp=timestamp,
+            created_at=timestamp,
+            related_type="gamification",
+            related_id=user_stats.id,
             metadata=level_progress
         ))
     
-    activities.sort(key=lambda x: x.timestamp, reverse=True)
-    return activities[:limit]
+    deduped: Dict[str, ActivityData] = {}
+    for activity in activities:
+        deduped[activity.id] = activity
+
+    sorted_activities = sorted(deduped.values(), key=lambda x: x.timestamp, reverse=True)
+    return sorted_activities[:safe_limit]
 
 
 @router.get("/overview", response_model=OverviewAnalytics)
@@ -422,7 +666,7 @@ async def get_overview_analytics(
     study_time_7_days = get_study_time_data(db, user_id, 7)
     study_time_30_days = get_study_time_data(db, user_id, 30)
     
-    is_pro = current_user.subscription_plan == models.SubscriptionPlan.PRO
+    is_pro = has_active_pro_subscription(current_user)
     streak_data = get_user_streak_data(db, user_id, is_pro)
     
     completed_steps = db.query(func.count(models.RoadmapStep.id)).join(models.Goal).filter(

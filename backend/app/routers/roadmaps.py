@@ -11,6 +11,7 @@ from app.database import get_db
 from app import models, schemas
 from app.services.ai_service import ai_service
 from app.routers.auth import get_current_user
+from app.services.email_service import send_goal_completed_email_async
 from app.services.gamification import GamificationService
 
 router = APIRouter()
@@ -105,6 +106,18 @@ async def complete_step(
         raise HTTPException(status_code=403, detail="Access denied")
     
     try:
+        was_already_completed = bool(step.is_completed)
+        if was_already_completed:
+            return {
+                "step": step,
+                "goal_completed": bool(goal.is_completed),
+                "new_achievements": [],
+                "level_up": None
+            }
+
+        gamification_service = GamificationService(db)
+        old_level = gamification_service.get_level_progress(current_user.id)["current_level"]
+
         step.is_completed = True
         step.completed_at = datetime.utcnow()
 
@@ -152,13 +165,10 @@ This note was auto-generated when you completed this roadmap step.
             )
             db.add(step_note)
 
-        gamification_service = GamificationService(db)
         gamification_service.update_stats_from_activity(current_user.id, "roadmap_step")
         
         new_achievements = gamification_service.check_and_award_achievements(current_user.id)
         level_up_info = None
-        
-        old_level = gamification_service.get_level_progress(current_user.id)["current_level"]
         
         all_steps = db.query(models.RoadmapStep).filter(
             models.RoadmapStep.goal_id == goal.id
@@ -193,6 +203,8 @@ This note was auto-generated when you completed this roadmap step.
                 }
         
         db.commit()
+        if goal_completed:
+            send_goal_completed_email_async(db, current_user.id, goal.title)
         
         db.refresh(step)
         return {

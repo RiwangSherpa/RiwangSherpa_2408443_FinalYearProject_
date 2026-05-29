@@ -9,11 +9,16 @@ import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import LimitReachedModal from '../components/ui/LimitReachedModal'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
+import { useToast } from '../components/ui/ToastContext'
+import { useAchievementNotifications } from '../hooks/useAchievementNotifications'
 
 export default function StudyRoadmap() {
   const { goalId } = useParams<{ goalId?: string }>()
   const navigate = useNavigate()
   const { refreshActivities } = useData()
+  const toast = useToast()
+  const { showAchievements } = useAchievementNotifications()
   const [goal, setGoal] = useState<Goal | null>(null)
   const [steps, setSteps] = useState<RoadmapStep[]>([])
   const [loading, setLoading] = useState(true)
@@ -25,6 +30,8 @@ export default function StudyRoadmap() {
   const [levelUpInfo, setLevelUpInfo] = useState<{oldLevel: number, newLevel: number} | null>(null)
   const [showCelebration, setShowCelebration] = useState(false)
   const [limitModalOpen, setLimitModalOpen] = useState(false)
+  const [deleteRoadmapGoalId, setDeleteRoadmapGoalId] = useState<number | null>(null)
+  const [deletingRoadmap, setDeletingRoadmap] = useState(false)
 
   useEffect(() => {
     if (goalId) {
@@ -85,7 +92,7 @@ export default function StudyRoadmap() {
       if (error.response?.status === 403) {
         setLimitModalOpen(true)
       } else {
-        alert('Failed to generate roadmap. Please try again.')
+        toast.error('Failed to generate roadmap. Please try again.')
       }
     } finally {
       setGenerating(false)
@@ -113,6 +120,7 @@ export default function StudyRoadmap() {
         if (response.data.new_achievements?.length > 0) {
           setShowCelebration(true)
           setNewAchievements(response.data.new_achievements)
+          showAchievements(response.data.new_achievements, response.data.level_up)
         }
         if (response.data.level_up) {
           setLevelUpInfo(response.data.level_up)
@@ -143,9 +151,9 @@ export default function StudyRoadmap() {
       setSteps(steps)
       
       if (error.response?.status === 429) {
-        alert('Please wait a moment before trying again.')
+        toast.warning('Please wait a moment before trying again.')
       } else {
-        alert('Failed to update step. Please try again.')
+        toast.error('Failed to update step. Please try again.')
       }
     } finally {
       if (button) {
@@ -157,15 +165,22 @@ export default function StudyRoadmap() {
 
 
   const handleDeleteRoadmap = async (goalIdToDelete: number) => {
-    if (!confirm('Are you sure you want to delete this roadmap? This will delete all steps for this goal.')) {
-      return
-    }
+    setDeleteRoadmapGoalId(goalIdToDelete)
+  }
+
+  const confirmDeleteRoadmap = async () => {
+    if (!deleteRoadmapGoalId) return
     try {
-      await roadmapsApi.delete(goalIdToDelete)
-      loadAllRoadmaps()
+      setDeletingRoadmap(true)
+      await roadmapsApi.delete(deleteRoadmapGoalId)
+      setDeleteRoadmapGoalId(null)
+      await loadAllRoadmaps()
+      toast.success('Roadmap deleted.')
     } catch (error) {
       console.error('Failed to delete roadmap:', error)
-      alert('Failed to delete roadmap. Please try again.')
+      toast.error('Failed to delete roadmap. Please try again.')
+    } finally {
+      setDeletingRoadmap(false)
     }
   }
   const groupRoadmapsByGoal = (steps: RoadmapStep[]) => {
@@ -557,6 +572,18 @@ export default function StudyRoadmap() {
           limitType="daily"
           currentCount={3}
           limitCount={3}
+        />
+        <ConfirmDialog
+          isOpen={deleteRoadmapGoalId !== null}
+          title="Delete roadmap?"
+          description="This will delete all steps for this goal. The goal itself will remain."
+          confirmLabel="Delete Roadmap"
+          destructive
+          loading={deletingRoadmap}
+          onConfirm={confirmDeleteRoadmap}
+          onCancel={() => {
+            if (!deletingRoadmap) setDeleteRoadmapGoalId(null)
+          }}
         />
       </div>
     </div>

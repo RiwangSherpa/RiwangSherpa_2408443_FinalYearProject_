@@ -4,10 +4,12 @@ import { motion } from 'framer-motion'
 import { productivityApi } from '../lib/api'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
+import { useAchievementNotifications } from '../hooks/useAchievementNotifications'
 
 type TimerState = 'idle' | 'running' | 'paused' | 'completed'
 
 export default function Productivity() {
+  const { showAchievements } = useAchievementNotifications()
   const [timerState, setTimerState] = useState<TimerState>('idle')
   const [timeLeft, setTimeLeft] = useState(25 * 60)
   const [sessionType, setSessionType] = useState<'pomodoro' | 'break'>('pomodoro')
@@ -75,7 +77,8 @@ export default function Productivity() {
     
     if (sessionId) {
       try {
-        await productivityApi.completeSession(sessionId)
+        const response = await productivityApi.completeSession(sessionId)
+        showAchievements(response.data.new_achievements || [])
       } catch (error) {
         console.error('Failed to complete session:', error)
       }

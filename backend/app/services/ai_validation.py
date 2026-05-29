@@ -21,6 +21,7 @@ class AIValidationError(Exception):
 class QuizQuestionSchema(BaseModel):
     """Schema for validating quiz questions"""
     question: str
+    code_snippet: Optional[str] = None
     options: List[str]
     correct_answer: int
     explanation: Optional[str] = None

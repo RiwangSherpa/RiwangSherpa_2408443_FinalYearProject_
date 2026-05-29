@@ -1,170 +1,272 @@
-import { useState, useEffect } from 'react'
-import { Save, Bell, User, Moon, Sun } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import type { ElementType, ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Bell,
+  ChevronRight,
+  Moon,
+  Save,
+  Shield,
+  Sun,
+} from 'lucide-react'
+import Button from '../components/ui/Button'
+import Card from '../components/ui/Card'
+import Skeleton from '../components/ui/Skeleton'
 import { useTheme } from '../contexts/ThemeContext'
+import { useToast } from '../components/ui/ToastContext'
+import { usersApi } from '../lib/api'
+import type { UserSettings, UserSettingsUpdate } from '../types'
+
+type ThemePreference = 'light' | 'dark'
+
+type SettingsForm = {
+  theme_preference: ThemePreference
+  email_notifications: boolean
+}
+
+const defaultSettings: SettingsForm = {
+  theme_preference: 'light',
+  email_notifications: false,
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as { response?: { data?: { detail?: string } } }).response
+    return response?.data?.detail || fallback
+  }
+  return fallback
+}
+
+function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-primary-dark ${
+        checked ? 'bg-primary dark:bg-primary-dark' : 'bg-neutral-300 dark:bg-dark-border-secondary'
+      }`}
+      aria-pressed={checked}
+      aria-label={label}
+    >
+      <span
+        className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+          checked ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  )
+}
+
+function SectionHeader({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: ElementType
+  title: string
+  description: string
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-muted text-primary dark:bg-primary/20 dark:text-primary-dark">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <h2 className="font-heading text-lg font-bold text-neutral-900 dark:text-dark-text-primary">
+          {title}
+        </h2>
+        <p className="mt-1 text-sm text-neutral-500 dark:text-dark-text-secondary">
+          {description}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function SettingRow({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex min-h-[6rem] flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-dark-border-primary dark:bg-dark-bg-tertiary sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="font-medium text-neutral-900 dark:text-dark-text-primary">{title}</p>
+        <p className="mt-1 text-sm text-neutral-500 dark:text-dark-text-secondary">{description}</p>
+      </div>
+      <div className="shrink-0 sm:ml-6">{children}</div>
+    </div>
+  )
+}
 
 export default function Settings() {
-  const { theme, toggleTheme } = useTheme()
-  const [settings, setSettings] = useState({
-    notifications: true,
-    learningStyle: 'balanced' as 'visual' | 'text' | 'practice' | 'balanced',
-  })
+  const navigate = useNavigate()
+  const { theme, setTheme } = useTheme()
+  const toast = useToast()
+  const [settings, setSettings] = useState<SettingsForm>({ ...defaultSettings, theme_preference: theme })
+  const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem('studyBuddySettings')
-    if (savedSettings) {
+    const loadSettings = async () => {
+      setIsLoading(true)
+      setLoadError(null)
       try {
-        const parsed = JSON.parse(savedSettings)
-        setSettings(prev => ({ ...prev, ...parsed }))
+        const response = await usersApi.getSettings()
+        const data = response.data as UserSettings
+        setSettings({
+          ...defaultSettings,
+          ...data,
+          theme_preference: data.theme_preference === 'dark' ? 'dark' : 'light',
+        })
       } catch (error) {
-        console.error('Failed to parse saved settings:', error)
+        setLoadError(getErrorMessage(error, 'Settings could not be loaded.'))
+      } finally {
+        setIsLoading(false)
       }
     }
+
+    void loadSettings()
   }, [])
+
+  const updateSetting = <Key extends keyof SettingsForm>(key: Key, value: SettingsForm[Key]) => {
+    setSettings((current) => ({ ...current, [key]: value }))
+  }
+
+  const updateThemePreference = (nextTheme: ThemePreference) => {
+    updateSetting('theme_preference', nextTheme)
+    setTheme(nextTheme)
+  }
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      localStorage.setItem('studyBuddySettings', JSON.stringify(settings))
-      
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      alert('Settings saved successfully!')
+      const payload: UserSettingsUpdate = {
+        theme_preference: settings.theme_preference,
+        email_notifications: settings.email_notifications,
+      }
+      const response = await usersApi.updateSettings(payload)
+      const data = response.data as UserSettings
+      setSettings({
+        ...defaultSettings,
+        ...data,
+        theme_preference: data.theme_preference === 'dark' ? 'dark' : 'light',
+      })
+      toast.success(payload.email_notifications ? 'Email notifications enabled.' : 'Settings saved successfully.')
     } catch (error) {
-      console.error('Failed to save settings:', error)
-      alert('Failed to save settings. Please try again.')
+      toast.error(getErrorMessage(error, 'Failed to save settings. Please try again.'))
     } finally {
       setIsSaving(false)
     }
   }
 
   return (
-    <div className="bg-neutral-50 dark:bg-dark-bg-primary min-h-screen px-6 py-8 transition-colors duration-300">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white dark:bg-dark-bg-secondary border border-neutral-200 dark:border-dark-border-primary rounded-card p-6 transition-colors duration-300">
-          <h1 className="font-heading text-2xl font-bold text-primary dark:text-primary-dark mb-2 transition-colors">Settings</h1>
-          <p className="text-sm text-neutral-500 dark:text-dark-text-secondary transition-colors">
-            Customize your Study Buddy experience
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-heading text-3xl font-bold text-primary dark:text-primary-dark">Settings</h1>
+          <p className="mt-2 text-sm text-neutral-500 dark:text-dark-text-secondary">
+            Customize your Study Buddy experience.
           </p>
-          
-          <div className="mt-8 space-y-8">
-            {/* Appearance / Theme */}
-            <div>
-              <h3 className="section-heading dark:text-dark-text-primary mb-4">
-                Appearance
-              </h3>
-              <div className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-dark-bg-tertiary rounded-card border border-neutral-200 dark:border-dark-border-primary transition-colors duration-300">
-                <div className="flex items-center gap-3">
-                  {theme === 'dark' ? (
-                    <Moon className="w-5 h-5 text-secondary dark:text-secondary-dark" />
-                  ) : (
-                    <Sun className="w-5 h-5 text-tertiary" />
-                  )}
-                  <div>
-                    <p className="font-medium text-neutral-900 dark:text-dark-text-primary transition-colors">Dark Mode</p>
-                    <p className="text-sm text-neutral-400 dark:text-dark-text-tertiary transition-colors">
-                      Toggle between light and dark themes
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className={`
-                    relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150
-                    focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark focus:ring-offset-2
-                    ${
-                      theme === 'dark'
-                        ? 'bg-primary dark:bg-primary-dark'
-                        : 'bg-neutral-300 dark:bg-dark-border-secondary'
-                    }
-                  `}
-                  aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                >
-                  <span
-                    className={`
-                      inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-150
-                      ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}
-                    `}
-                  />
-                </button>
-              </div>
-            </div>
-
-            {/* Notifications */}
-            <div>
-              <h3 className="section-heading dark:text-dark-text-primary mb-4">
-                Notifications
-              </h3>
-              <div className="space-y-4">
-                <label className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Bell className="w-5 h-5 text-neutral-400 dark:text-dark-text-tertiary transition-colors" />
-                    <div>
-                      <p className="font-medium text-neutral-900 dark:text-dark-text-primary transition-colors">
-                        Email Notifications
-                      </p>
-                      <p className="text-sm text-neutral-400 dark:text-dark-text-tertiary transition-colors">
-                        Receive study reminders and updates
-                      </p>
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={settings.notifications}
-                    onChange={(e) => setSettings(prev => ({ ...prev, notifications: e.target.checked }))}
-                    className="w-4 h-4 text-primary dark:text-primary-dark border-neutral-300 dark:border-dark-border-primary rounded focus:ring-primary dark:focus:ring-primary-dark transition-colors"
-                  />
-                </label>
-              </div>
-            </div>
-
-            {/* Account */}
-            <div>
-              <h3 className="section-heading dark:text-dark-text-primary mb-4">
-                Account
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-dark-bg-tertiary rounded-card border border-neutral-200 dark:border-dark-border-primary transition-colors">
-                  <div className="flex items-center gap-3">
-                    <User className="w-5 h-5 text-neutral-400 dark:text-dark-text-tertiary transition-colors" />
-                    <div>
-                      <p className="font-medium text-neutral-900 dark:text-dark-text-primary transition-colors">Account Settings</p>
-                      <p className="text-sm text-neutral-400 dark:text-dark-text-tertiary transition-colors">
-                        Manage your profile and preferences
-                      </p>
-                    </div>
-                  </div>
-                  <button className="text-primary dark:text-primary-dark hover:text-primary-light dark:hover:text-primary/90 font-medium text-sm transition-colors">
-                    Manage
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Save Button */}
-            <div className="flex justify-end pt-6 border-t border-neutral-200 dark:border-dark-border-primary transition-colors">
-              <button 
-                onClick={handleSave} 
-                disabled={isSaving}
-                className="btn-primary flex items-center gap-2"
-              >
-                {isSaving ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white dark:border-dark-bg-primary border-t-transparent rounded-full animate-spin"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Save Settings
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
         </div>
+        <Button type="button" onClick={handleSave} loading={isSaving} disabled={isLoading}>
+          <Save className="mr-2 h-4 w-4" />
+          Save Settings
+        </Button>
       </div>
+
+      {isLoading ? (
+        <div className="space-y-5">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <Card key={index} className="space-y-4">
+              <Skeleton width="35%" height="1.25rem" />
+              <Skeleton lines={2} variant="text" />
+              <Skeleton height={index === 0 ? '8rem' : '4rem'} />
+            </Card>
+          ))}
+        </div>
+      ) : loadError ? (
+        <Card className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-heading text-lg font-bold text-neutral-900 dark:text-dark-text-primary">
+              Settings unavailable
+            </h2>
+            <p className="mt-1 text-sm text-neutral-500 dark:text-dark-text-secondary">{loadError}</p>
+          </div>
+          <Button type="button" variant="secondary" onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div className="flex h-full flex-col gap-5">
+                <SectionHeader
+                  icon={theme === 'dark' ? Moon : Sun}
+                  title="Appearance"
+                  description="Choose how Study Buddy looks while you learn."
+                />
+                <SettingRow title="Dark mode" description="Use a darker interface for low-light study sessions.">
+                  <Toggle
+                    checked={settings.theme_preference === 'dark'}
+                    onChange={(checked) => updateThemePreference(checked ? 'dark' : 'light')}
+                    label="Toggle dark mode"
+                  />
+                </SettingRow>
+              </div>
+
+              <div className="flex h-full flex-col gap-5">
+                <SectionHeader
+                  icon={Bell}
+                  title="Notifications"
+                  description="Control reminders and progress updates."
+                />
+                <SettingRow title="Email notifications" description="Receive important Study Buddy updates by email.">
+                  <Toggle
+                    checked={settings.email_notifications}
+                    onChange={(checked) => updateSetting('email_notifications', checked)}
+                    label="Toggle email notifications"
+                  />
+                </SettingRow>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-600 dark:bg-dark-bg-tertiary dark:text-dark-text-secondary">
+                <Shield className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="font-heading text-lg font-bold text-neutral-900 dark:text-dark-text-primary">
+                  Account
+                </h2>
+                <p className="mt-1 text-sm text-neutral-500 dark:text-dark-text-secondary">
+                  Manage your profile, email, password, and account security.
+                </p>
+              </div>
+            </div>
+            <Button type="button" variant="secondary" onClick={() => navigate('/settings/account')}>
+              Manage Account
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Card>
+        </>
+      )}
     </div>
   )
 }

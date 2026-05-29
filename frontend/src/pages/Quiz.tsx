@@ -9,10 +9,10 @@ import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import LimitReachedModal from '../components/ui/LimitReachedModal'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeHighlight from 'rehype-highlight'
-import rehypeRaw from 'rehype-raw'
+import QuestionContent from '../components/quiz/QuestionContent'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
+import { useToast } from '../components/ui/ToastContext'
+import { useAchievementNotifications } from '../hooks/useAchievementNotifications'
 import 'highlight.js/styles/github.css'
 
 interface SavedQuiz {
@@ -29,6 +29,8 @@ export default function Quiz() {
   const { goalId } = useParams<{ goalId?: string }>()
   const navigate = useNavigate()
   const { refreshActivities } = useData()
+  const toast = useToast()
+  const { showAchievements } = useAchievementNotifications()
   const [goal, setGoal] = useState<Goal | null>(null)
   const [questions, setQuestions] = useState<QuizQuestion[]>([])
   const [answers, setAnswers] = useState<number[]>([])
@@ -43,6 +45,8 @@ export default function Quiz() {
   const [newAchievements, setNewAchievements] = useState<any[]>([])
   const [levelUpInfo, setLevelUpInfo] = useState<{oldLevel: number, newLevel: number} | null>(null)
   const [limitModalOpen, setLimitModalOpen] = useState(false)
+  const [deleteQuizId, setDeleteQuizId] = useState<number | null>(null)
+  const [deletingQuiz, setDeletingQuiz] = useState(false)
 
   useEffect(() => {
     if (goalId) {
@@ -90,7 +94,7 @@ export default function Quiz() {
 
   const handleGenerateQuiz = async () => {
     if (!goalId) {
-      alert('Please select a goal first')
+      toast.warning('Please select a goal first.')
       return
     }
 
@@ -112,7 +116,7 @@ export default function Quiz() {
       if (error.response?.status === 403) {
         setLimitModalOpen(true)
       } else {
-        alert('Failed to generate quiz. Please try again.')
+        toast.error('Failed to generate quiz. Please try again.')
       }
     } finally {
       setGenerating(false)
@@ -127,7 +131,7 @@ export default function Quiz() {
 
   const handleSubmit = async () => {
     if (answers.some(a => a === -1)) {
-      alert('Please answer all questions')
+      toast.warning('Please answer all questions.')
       return
     }
 
@@ -144,6 +148,7 @@ export default function Quiz() {
       setResult(response.data)
       if (response.data.new_achievements?.length > 0) {
         setNewAchievements(response.data.new_achievements)
+        showAchievements(response.data.new_achievements, response.data.level_up)
       }
       if (response.data.level_up) {
         setLevelUpInfo(response.data.level_up)
@@ -152,7 +157,7 @@ export default function Quiz() {
       refreshActivities()
     } catch (error) {
       console.error('Failed to submit quiz:', error)
-      alert('Failed to submit quiz. Please try again.')
+      toast.error('Failed to submit quiz. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -173,14 +178,22 @@ export default function Quiz() {
   }
 
   const handleDeleteQuiz = async (quizId: number) => {
-    if (!confirm('Are you sure you want to delete this quiz?')) return
-    
+    setDeleteQuizId(quizId)
+  }
+
+  const confirmDeleteQuiz = async () => {
+    if (!deleteQuizId) return
     try {
-      await quizzesApi.delete(quizId)
-      setSavedQuizzes(savedQuizzes.filter(q => q.id !== quizId))
+      setDeletingQuiz(true)
+      await quizzesApi.delete(deleteQuizId)
+      setSavedQuizzes(savedQuizzes.filter(q => q.id !== deleteQuizId))
+      setDeleteQuizId(null)
+      toast.success('Quiz deleted.')
     } catch (error) {
       console.error('Failed to delete quiz:', error)
-      alert('Failed to delete quiz')
+      toast.error('Failed to delete quiz.')
+    } finally {
+      setDeletingQuiz(false)
     }
   }
 
@@ -386,12 +399,7 @@ export default function Quiz() {
                     Question {qIndex + 1}
                   </h3>
                   <div className="mb-4 p-4 bg-neutral-50 dark:bg-dark-bg-tertiary rounded-lg prose-custom transition-colors">
-                    <ReactMarkdown 
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeRaw, rehypeHighlight]}
-                    >
-                      {question.question}
-                    </ReactMarkdown>
+                    <QuestionContent question={question} />
                   </div>
                   <div className="space-y-2">
                     {question.options.map((option, oIndex) => (
@@ -528,14 +536,9 @@ export default function Quiz() {
                         <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                       )}
                       <div className="flex-1">
-                        <p className="font-medium text-neutral-900 dark:text-dark-text-primary mb-2 prose-custom transition-colors">
-                          <ReactMarkdown 
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeRaw, rehypeHighlight]}
-                          >
-                            {question.question}
-                          </ReactMarkdown>
-                        </p>
+                        <div className="mb-3 font-medium text-neutral-900 dark:text-dark-text-primary transition-colors">
+                          <QuestionContent question={question} />
+                        </div>
                         <p className="text-sm text-neutral-600 dark:text-dark-text-secondary mb-1 transition-colors">
                           Your answer: <span className="font-medium">{String.fromCharCode(65 + feedback.selected_answer)}. {question.options[feedback.selected_answer]}</span>
                         </p>
@@ -590,6 +593,18 @@ export default function Quiz() {
         limitType="daily"
         currentCount={3}
         limitCount={3}
+      />
+      <ConfirmDialog
+        isOpen={deleteQuizId !== null}
+        title="Delete quiz?"
+        description="This will permanently remove this quiz result from your quiz history."
+        confirmLabel="Delete Quiz"
+        destructive
+        loading={deletingQuiz}
+        onConfirm={confirmDeleteQuiz}
+        onCancel={() => {
+          if (!deletingQuiz) setDeleteQuizId(null)
+        }}
       />
       </div>
     </div>

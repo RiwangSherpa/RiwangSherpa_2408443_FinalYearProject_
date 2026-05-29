@@ -3,12 +3,17 @@ from typing import Optional
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
+import hashlib
 import secrets
 
 from app.config import settings
 from app import models
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 def get_password_hash(password: str) -> str:
     if len(password.encode('utf-8')) > 72:
@@ -42,6 +47,8 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[models
     user = get_user_by_email(db, email)
     if not user:
         return None
+    if not user.hashed_password:
+        return None
     if not verify_password(password, user.hashed_password):
         return None
     if not user.is_active:
@@ -59,7 +66,8 @@ def create_user(db: Session, email: str, password: str, full_name: Optional[str]
         full_name=full_name,
         is_active=True,
         is_verified=False,
-        subscription_plan=models.SubscriptionPlan.FREE
+        subscription_plan=models.SubscriptionPlan.FREE,
+        email_notifications=False,
     )
 
     db.add(user)
@@ -67,27 +75,28 @@ def create_user(db: Session, email: str, password: str, full_name: Optional[str]
     db.refresh(user)
     return user
 
-def create_password_reset_token_for_user(db: Session, user: models.User) -> models.PasswordResetToken:
+def create_password_reset_token_for_user(db: Session, user: models.User) -> str:
     db.query(models.PasswordResetToken).filter(
         models.PasswordResetToken.user_id == user.id,
         models.PasswordResetToken.used == False
     ).update({"used": True})
 
+    raw_token = secrets.token_urlsafe(48)
     token = models.PasswordResetToken(
         user_id=user.id,
-        token=secrets.token_urlsafe(32),
-        expires_at=datetime.utcnow() + timedelta(hours=settings.PASSWORD_RESET_TOKEN_EXPIRE_HOURS),
+        token=_hash_reset_token(raw_token),
+        expires_at=datetime.utcnow() + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES),
         used=False
     )
 
     db.add(token)
     db.commit()
-    db.refresh(token)
-    return token
+    return raw_token
 
 def verify_password_reset_token(db: Session, token: str) -> Optional[models.User]:
+    token_hash = _hash_reset_token(token)
     reset = db.query(models.PasswordResetToken).filter(
-        models.PasswordResetToken.token == token,
+        models.PasswordResetToken.token == token_hash,
         models.PasswordResetToken.used == False,
         models.PasswordResetToken.expires_at > datetime.utcnow()
     ).first()
@@ -98,8 +107,9 @@ def verify_password_reset_token(db: Session, token: str) -> Optional[models.User
     return reset.user
 
 def use_password_reset_token(db: Session, token: str) -> bool:
+    token_hash = _hash_reset_token(token)
     reset = db.query(models.PasswordResetToken).filter(
-        models.PasswordResetToken.token == token
+        models.PasswordResetToken.token == token_hash
     ).first()
 
     if not reset:

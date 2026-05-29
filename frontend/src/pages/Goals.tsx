@@ -9,10 +9,15 @@ import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import VoiceInput from '../components/VoiceInput'
 import LimitReachedModal from '../components/ui/LimitReachedModal'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
+import { useToast } from '../components/ui/ToastContext'
+import { useAchievementNotifications } from '../hooks/useAchievementNotifications'
 
 export default function Goals() {
   const navigate = useNavigate()
   const { goals, loadingGoals, refreshGoals, refreshActivities } = useData()
+  const toast = useToast()
+  const { checkForAchievements } = useAchievementNotifications()
   const [goalProgress, setGoalProgress] = useState<Record<number, { completed: number; total: number }>>({})
   const [showGoalForm, setShowGoalForm] = useState(false)
   const [newGoal, setNewGoal] = useState({
@@ -20,6 +25,8 @@ export default function Goals() {
     description: '',
   })
   const [limitModalOpen, setLimitModalOpen] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
+  const [deletingGoal, setDeletingGoal] = useState(false)
 
   useEffect(() => {
     console.log('[Goals] Goals updated:', goals.length, 'goals')
@@ -51,7 +58,7 @@ export default function Goals() {
   const handleCreateGoal = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newGoal.title.trim()) {
-      alert('Please enter a goal title')
+      toast.warning('Please enter a goal title.')
       return
     }
 
@@ -72,34 +79,43 @@ export default function Goals() {
       console.log('[Goals] Goals list refreshed')
       
       refreshActivities()
+      await checkForAchievements()
+      toast.success('Goal created.')
     } catch (error: any) {
       console.error('[Goals] Failed to create goal:', error)
       if (error.response?.status === 429) {
-        alert('Too many requests. Please wait a moment and try again.')
+        toast.warning('Too many requests. Please wait a moment and try again.')
       } else if (error.response?.status === 403) {
         setShowGoalForm(false)
         setLimitModalOpen(true)
       } else {
-        alert('Failed to create goal. Please try again.')
+        toast.error('Failed to create goal. Please try again.')
       }
     }
   }
 
   const handleDeleteGoal = async (goalId: number, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!confirm('Are you sure you want to delete this goal? This will also delete its roadmap and quizzes.')) {
-      return
-    }
+    setDeleteTargetId(goalId)
+  }
+
+  const confirmDeleteGoal = async () => {
+    if (!deleteTargetId) return
     try {
-      await goalsApi.delete(goalId)
-      refreshGoals()
+      setDeletingGoal(true)
+      await goalsApi.delete(deleteTargetId)
+      setDeleteTargetId(null)
+      await refreshGoals()
+      toast.success('Goal deleted.')
     } catch (error: any) {
       console.error('Failed to delete goal:', error)
       if (error.response?.status === 429) {
-        alert('Too many requests. Please wait a moment and try again.')
+        toast.warning('Too many requests. Please wait a moment and try again.')
       } else {
-        alert('Failed to delete goal. Please try again.')
+        toast.error('Failed to delete goal. Please try again.')
       }
+    } finally {
+      setDeletingGoal(false)
     }
   }
 
@@ -317,6 +333,18 @@ export default function Goals() {
           limitType="active"
           currentCount={3}
           limitCount={3}
+        />
+        <ConfirmDialog
+          isOpen={deleteTargetId !== null}
+          title="Delete goal?"
+          description="This will also delete its roadmap, progress records, quizzes, notes, and related learning data."
+          confirmLabel="Delete Goal"
+          destructive
+          loading={deletingGoal}
+          onConfirm={confirmDeleteGoal}
+          onCancel={() => {
+            if (!deletingGoal) setDeleteTargetId(null)
+          }}
         />
       </div>
     </div>

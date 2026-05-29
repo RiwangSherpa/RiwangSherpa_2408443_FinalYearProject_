@@ -10,6 +10,11 @@ from pathlib import Path
 from typing import Optional
 
 
+APP_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = APP_DIR.parent
+PROJECT_ROOT = BACKEND_DIR.parent
+
+
 def get_secret_key() -> str:
     """Get or generate a secure JWT secret key"""
     key = os.getenv("SECRET_KEY")
@@ -48,6 +53,7 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-3.5-turbo"
 
     PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = 24
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
 
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = 60
     RATE_LIMIT_AI_REQUESTS_PER_HOUR: int = 100
@@ -75,14 +81,32 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
     FRONTEND_URL: str = "http://localhost:5173"
+    BACKEND_URL: str = "http://localhost:8000"
+
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = ""
+    SMTP_FROM_NAME: str = "Study Buddy"
+    SMTP_USE_TLS: bool = True
+    SMTP_TIMEOUT_SECONDS: int = 10
+
+    KHALTI_SECRET_KEY: str = ""
+    KHALTI_PUBLIC_KEY: str = ""
+    KHALTI_BASE_URL: str = "https://dev.khalti.com/api/v2"
+
+    ESEWA_MERCHANT_CODE: str = "EPAYTEST"
+    ESEWA_SECRET_KEY: str = "8gBm/:&EnhH.1/q"
+    ESEWA_PAYMENT_URL: str = "https://rc-epay.esewa.com.np/api/epay/main/v2/form"
+    ESEWA_STATUS_CHECK_URL: str = "https://rc.esewa.com.np/api/epay/transaction/status/"
+    SUBSCRIPTION_PRICE_NPR: float = 999.0
     
     class Config:
-        env_file = (".env", "../.env")
+        env_file = (BACKEND_DIR / ".env", PROJECT_ROOT / ".env")
         case_sensitive = True
 
 settings = Settings()
-BACKEND_DIR = Path(__file__).resolve().parent.parent
-PROJECT_ROOT = BACKEND_DIR.parent
 DB_DIR = BACKEND_DIR / "database"
 DB_DIR.mkdir(exist_ok=True)
 if not os.getenv("DATABASE_URL"):

@@ -4,12 +4,14 @@ Productivity API router
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 from datetime import datetime
 
 from app.database import get_db
 from app import models, schemas
 from app.routers.auth import get_current_user
+from app.services.gamification import GamificationService
 
 router = APIRouter()
 
@@ -48,10 +50,27 @@ async def complete_session(
     try:
         db_session.was_completed = True
         db_session.completed_at = datetime.utcnow()
+
+        today = datetime.utcnow().date()
+        streak = db.query(models.StudyStreak).filter(
+            models.StudyStreak.user_id == current_user.id,
+            func.date(models.StudyStreak.date) == today
+        ).first()
+        if not streak:
+            streak = models.StudyStreak(
+                user_id=current_user.id,
+                date=datetime.utcnow(),
+                study_time_minutes=db_session.duration_minutes,
+                goals_worked_on=[]
+            )
+            db.add(streak)
+        else:
+            streak.study_time_minutes += db_session.duration_minutes
         
         db.commit()
         db.refresh(db_session)
-        return db_session
+        new_achievements = GamificationService(db).check_and_award_achievements(current_user.id)
+        return {"session": db_session, "new_achievements": new_achievements}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to complete session: {str(e)}")

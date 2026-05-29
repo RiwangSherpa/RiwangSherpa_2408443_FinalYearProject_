@@ -18,6 +18,9 @@ import {
 } from 'lucide-react'
 import { brainstormApi, flashcardsApi, notesApi } from '../lib/api'
 import type { ArtifactSourceType, BrainstormSession, Flashcard, FlashcardDeck, Note } from '../types'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
+import { useToast } from '../components/ui/ToastContext'
+import { useAchievementNotifications } from '../hooks/useAchievementNotifications'
 
 type SourceOption = {
   type: ArtifactSourceType
@@ -39,6 +42,8 @@ function shuffled<T>(items: T[]) {
 }
 
 export default function Flashcards() {
+  const toast = useToast()
+  const { checkForAchievements } = useAchievementNotifications()
   const [decks, setDecks] = useState<FlashcardDeck[]>([])
   const [activeDeck, setActiveDeck] = useState<FlashcardDeck | null>(null)
   const [notes, setNotes] = useState<Note[]>([])
@@ -58,6 +63,8 @@ export default function Flashcards() {
   const [sessionStats, setSessionStats] = useState<Record<number, CardSessionStat>>({})
   const [reviewedCardIds, setReviewedCardIds] = useState<number[]>([])
   const [sessionFinished, setSessionFinished] = useState(false)
+  const [deleteDeckTarget, setDeleteDeckTarget] = useState<FlashcardDeck | null>(null)
+  const [deletingDeck, setDeletingDeck] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -168,6 +175,7 @@ export default function Flashcards() {
       setManualContent('')
       setTitle('')
       setStatus(`Built ${response.data.cards?.length || response.data.card_count} usable flashcards.`)
+      await checkForAchievements()
     } catch (err: any) {
       const detail = err?.response?.data?.detail || 'Flashcard generation failed.'
       setError(detail)
@@ -266,17 +274,24 @@ export default function Flashcards() {
     setFlipped(false)
   }
 
-  const deleteDeck = async (deckId: number) => {
+  const deleteDeck = async () => {
+    if (!deleteDeckTarget) return
     try {
-      await flashcardsApi.deleteDeck(deckId)
-      const remaining = decks.filter((deck) => deck.id !== deckId)
+      setDeletingDeck(true)
+      await flashcardsApi.deleteDeck(deleteDeckTarget.id)
+      const remaining = decks.filter((deck) => deck.id !== deleteDeckTarget.id)
       setDecks(remaining)
-      if (activeDeck?.id === deckId) {
+      if (activeDeck?.id === deleteDeckTarget.id) {
         setActiveDeck(null)
         if (remaining[0]) await selectDeck(remaining[0].id)
       }
+      setDeleteDeckTarget(null)
+      toast.success('Flashcard deck deleted.')
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Failed to delete deck.')
+      toast.error(err?.response?.data?.detail || 'Failed to delete deck.')
+    } finally {
+      setDeletingDeck(false)
     }
   }
 
@@ -373,7 +388,7 @@ export default function Flashcards() {
                 <RotateCcw className="h-4 w-4" />
               </button>
               {activeDeck && (
-                <button onClick={() => deleteDeck(activeDeck.id)} className="btn-outlined !px-3 text-red-600" title="Delete deck">
+                <button onClick={() => setDeleteDeckTarget(activeDeck)} className="btn-outlined !px-3 text-red-600" title="Delete deck">
                   <Trash2 className="h-4 w-4" />
                 </button>
               )}
@@ -566,6 +581,18 @@ export default function Flashcards() {
           </div>
         </aside>
       </div>
+      <ConfirmDialog
+        isOpen={Boolean(deleteDeckTarget)}
+        title="Delete flashcard deck?"
+        description={`This will permanently remove "${deleteDeckTarget?.title || 'this deck'}" and all cards in it.`}
+        confirmLabel="Delete Deck"
+        destructive
+        loading={deletingDeck}
+        onConfirm={deleteDeck}
+        onCancel={() => {
+          if (!deletingDeck) setDeleteDeckTarget(null)
+        }}
+      />
     </div>
   )
 }

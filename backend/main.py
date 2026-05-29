@@ -54,7 +54,11 @@ init_db()
 # CORS middleware - restrictive for production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=list({
+        "http://localhost:3000",
+        "http://localhost:5173",
+        settings.FRONTEND_URL.rstrip("/"),
+    }),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],

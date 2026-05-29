@@ -41,6 +41,7 @@ import {
 } from 'lucide-react'
 import ToastContainer, { type Toast } from '../components/ui/Toast'
 import { brainstormApi, mindmapsApi, notesApi } from '../lib/api'
+import { useAchievementNotifications } from '../hooks/useAchievementNotifications'
 import type {
   ArtifactSourceType,
   BrainstormFile,
@@ -318,6 +319,7 @@ function sourceKey(option: SourceOption) {
 }
 
 export default function Mindmap() {
+  const { checkForAchievements } = useAchievementNotifications()
   const [mindmaps, setMindmaps] = useState<MindmapType[]>([])
   const [selected, setSelected] = useState<MindmapType | null>(null)
   const [notes, setNotes] = useState<Note[]>([])
@@ -508,6 +510,7 @@ export default function Mindmap() {
       setUploadSelection([])
       setTitle('')
       addToast('Mindmap generated.', 'success')
+      await checkForAchievements()
       await loadData()
     } catch (err: any) {
       const message = err?.response?.data?.detail || err?.message || 'Mindmap generation failed.'

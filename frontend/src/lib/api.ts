@@ -3,6 +3,7 @@
  */
 
 import axios from 'axios'
+import type { ChangePasswordRequest, ProfileUpdate, UserSettingsUpdate } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -107,7 +108,10 @@ export const progressApi = {
   recordSession: (minutes: number) => api.post('/api/progress/session', { minutes }),
   trackTime: (minutes: number) => api.post('/api/progress/track-time', { minutes }),
   getStudyHistory: (days: number = 30) => api.get('/api/progress/study-history', { params: { days } }),
-  getStreakHistory: (days: number = 30) => api.get('/api/progress/streak-history', { params: { days } }),
+  getStreakHistory: (params: number | { start_date: string; end_date: string } = 30) =>
+    api.get('/api/progress/streak-history', {
+      params: typeof params === 'number' ? { days: params } : params,
+    }),
 }
 
 export const productivityApi = {
@@ -147,8 +151,16 @@ export const authApi = {
 
 export const subscriptionsApi = {
   getStatus: () => api.get('/api/subscriptions/status'),
-  upgrade: (plan: string, paymentMethod: string = 'demo') =>
+  upgrade: (plan: string, paymentMethod: string = 'manual') =>
     api.post('/api/subscriptions/upgrade', { plan, payment_method: paymentMethod }),
+  initiateEsewaPayment: () => api.post('/api/subscriptions/esewa/initiate'),
+  verifyEsewaPayment: (data: { transaction_uuid?: string; data?: string; callback_data?: Record<string, string> }) =>
+    api.post('/api/subscriptions/esewa/verify', data),
+  initiateKhaltiPayment: () => api.post('/api/subscriptions/khalti/initiate'),
+  verifyKhaltiPayment: (pidx: string) =>
+    api.post('/api/subscriptions/khalti/verify', { pidx }),
+  getPaymentStatus: (pidx: string) =>
+    api.get('/api/subscriptions/payment-status', { params: { pidx } }),
   getFeatures: () => api.get('/api/subscriptions/features'),
 }
 
@@ -164,6 +176,10 @@ export const usersApi = {
   getTheme: () => api.get('/api/users/theme'),
   updateTheme: (theme: string) => api.put('/api/users/theme', { theme }),
   getSettings: () => api.get('/api/users/settings'),
+  updateSettings: (data: UserSettingsUpdate) => api.put('/api/users/settings', data),
+  updateProfile: (data: ProfileUpdate) => api.put('/api/users/profile', data),
+  changePassword: (data: ChangePasswordRequest) =>
+    api.post('/api/users/change-password', data),
 }
 
 export const tutorApi = {

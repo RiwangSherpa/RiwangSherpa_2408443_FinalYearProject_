@@ -9,7 +9,9 @@ export interface User {
   provider?: 'local' | 'google'
   avatar_url?: string
   subscription_plan?: string
+  is_pro?: boolean
   is_active?: boolean
+  subscription_expires_at?: string
 }
 
 export interface Goal {
@@ -37,6 +39,9 @@ export interface RoadmapStep {
 
 export interface QuizQuestion {
   question: string
+  code_snippet?: string | null
+  codeBlock?: string | null
+  code?: string | null
   options: string[]
   correct_answer: number
   explanation?: string
@@ -108,6 +113,7 @@ export interface User {
   provider?: 'local' | 'google'
   avatar_url?: string
   subscription_plan?: string | 'free' | 'pro'
+  is_pro?: boolean
   is_active?: boolean
   subscription_expires_at?: string
   created_at?: string
@@ -115,8 +121,49 @@ export interface User {
 
 export interface SubscriptionStatus {
   plan: 'free' | 'pro'
+  is_pro: boolean
   is_active: boolean
   expires_at?: string
+  subscription_expires_at?: string
+  features?: Record<string, any>
+}
+
+export interface KhaltiInitiateResponse {
+  pidx: string
+  payment_url: string
+  expires_at?: string
+  expires_in?: number
+  amount_paisa: number
+}
+
+export interface KhaltiVerifyResponse {
+  success: boolean
+  message: string
+  payment_status: 'initiated' | 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded'
+  subscription_status: SubscriptionStatus
+}
+
+export interface EsewaInitiateResponse {
+  payment_url: string
+  amount: string
+  tax_amount: string
+  total_amount: string
+  transaction_uuid: string
+  product_code: string
+  product_service_charge: string
+  product_delivery_charge: string
+  success_url: string
+  failure_url: string
+  signed_field_names: string
+  signature: string
+}
+
+export interface EsewaVerifyResponse {
+  success: boolean
+  message: string
+  payment_status: 'initiated' | 'pending' | 'completed' | 'failed' | 'cancelled'
+  subscription_status: SubscriptionStatus
+  reference_id?: string
 }
 
 export interface StudyTimeData {
@@ -209,14 +256,46 @@ export interface UserSettings {
   theme_preference: string
   full_name?: string
   subscription_plan: string
+  email_notifications: boolean
+}
+
+export type UserSettingsUpdate = Partial<Omit<UserSettings, 'full_name' | 'subscription_plan'>>
+
+export interface ProfileUpdate {
+  full_name?: string | null
+}
+
+export interface ChangePasswordRequest {
+  current_password: string
+  new_password: string
 }
 
 export interface ActivityData {
   id: string
-  type: 'goal_completed' | 'goal_created' | 'goal_progress' | 'quiz_attempt' | 'level_up' | 'study_session'
+  type:
+    | 'goal_completed'
+    | 'goal_created'
+    | 'goal_progress'
+    | 'quiz_attempt'
+    | 'level_up'
+    | 'study_session'
+    | 'roadmap_generated'
+    | 'roadmap_step_completed'
+    | 'note_created'
+    | 'brainstorm_created'
+    | 'file_uploaded'
+    | 'flashcard_deck_generated'
+    | 'mindmap_generated'
+    | 'productivity_session_completed'
+    | 'achievement_unlocked'
+    | 'study_time_tracked'
   title: string
   description: string
   timestamp: string
+  created_at?: string
+  related_type?: 'goal' | 'roadmap' | 'quiz' | 'note' | 'brainstorm' | 'flashcards' | 'mindmap' | 'productivity' | 'achievement' | 'gamification' | 'progress'
+  related_id?: number
+  goal_id?: number
   goal_title?: string
   metadata?: Record<string, any>
 }

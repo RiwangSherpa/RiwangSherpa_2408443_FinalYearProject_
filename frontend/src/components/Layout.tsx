@@ -9,6 +9,7 @@ import {
   Bot,
   Trophy,
   User,
+  Settings as SettingsIcon,
   LogOut,
   Menu,
   X,
@@ -21,9 +22,10 @@ import {
   Layers,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { progressApi } from '../lib/api'
+import { progressApi, subscriptionsApi } from '../lib/api'
 import Logo from './Logo'
 import { motion, AnimatePresence } from 'framer-motion'
+import { SubscriptionStatus } from '../types'
 
 interface LayoutProps {
   children: ReactNode
@@ -46,11 +48,20 @@ const moreNavigation = [
   { name: 'Flashcards', href: '/flashcards', icon: Layers },
 ]
 
+function hasFutureProExpiry(plan?: string, expiresAt?: string) {
+  return Boolean(
+    plan === 'pro' &&
+    expiresAt &&
+    new Date(expiresAt) > new Date()
+  )
+}
+
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout, isAuthenticated } = useAuth()
   const [streak, setStreak] = useState(0)
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
@@ -58,8 +69,9 @@ export default function Layout({ children }: LayoutProps) {
   useEffect(() => {
     if (isAuthenticated) {
       loadStreak()
+      loadSubscriptionStatus()
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, location.pathname])
 
   const loadStreak = async () => {
     try {
@@ -70,12 +82,24 @@ export default function Layout({ children }: LayoutProps) {
     }
   }
 
+  const loadSubscriptionStatus = async () => {
+    try {
+      const response = await subscriptionsApi.getStatus()
+      setSubscriptionStatus(response.data)
+    } catch (error) {
+      console.error('Failed to load subscription status:', error)
+    }
+  }
+
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
 
-  const isPro = user?.subscription_plan !== 'free'
+  const fallbackIsPro = hasFutureProExpiry(user?.subscription_plan, user?.subscription_expires_at)
+  const isPro = subscriptionStatus
+    ? hasFutureProExpiry(subscriptionStatus.plan, subscriptionStatus.subscription_expires_at || subscriptionStatus.expires_at)
+    : fallbackIsPro
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-dark-bg-primary transition-colors duration-300">
@@ -180,8 +204,8 @@ export default function Layout({ children }: LayoutProps) {
                 <span>{isPro ? 'PRO' : 'Upgrade'}</span>
               </Link>
 
-              {/* User Menu */}
-              <div className="relative group">
+                {/* User Menu */}
+                <div className="relative group">
                 <button 
                   onClick={() => navigate('/profile')}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-hover-primary transition-colors"
@@ -198,10 +222,17 @@ export default function Layout({ children }: LayoutProps) {
                 <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-bg-secondary rounded-card border border-neutral-200 dark:border-dark-border-primary opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                   <div className="py-1">
                     <Link
-                      to="/settings"
+                      to="/profile"
                       className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 dark:text-dark-text-primary hover:bg-neutral-100 dark:hover:bg-dark-hover-primary transition-colors"
                     >
                       <User className="w-4 h-4" />
+                      Profile
+                    </Link>
+                    <Link
+                      to="/settings"
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 dark:text-dark-text-primary hover:bg-neutral-100 dark:hover:bg-dark-hover-primary transition-colors"
+                    >
+                      <SettingsIcon className="w-4 h-4" />
                       Settings
                     </Link>
                     <button

@@ -317,13 +317,19 @@ class AIService:
             raise ValueError("Quiz response must be a question list.")
 
         questions: list[dict[str, Any]] = []
-        for item in raw_questions[:num_questions]:
+        for item in raw_questions:
+            if len(questions) >= num_questions:
+                break
             if not isinstance(item, dict):
                 continue
 
             question = str(item.get("question", "")).strip()
+            question, code_snippet = self._normalize_quiz_code(question, item)
             raw_options = item.get("options")
             if not question or not isinstance(raw_options, list):
+                continue
+
+            if self._question_requires_code(question) and not code_snippet:
                 continue
 
             options = [str(option).strip() for option in raw_options if str(option).strip()][:4]
@@ -341,6 +347,7 @@ class AIService:
             questions.append(
                 {
                     "question": question,
+                    "code_snippet": code_snippet,
                     "options": options,
                     "correct_answer": correct_answer,
                     "explanation": str(item.get("explanation", "")).strip(),
@@ -351,6 +358,35 @@ class AIService:
             raise ValueError("Quiz response did not contain any valid questions.")
 
         return questions
+
+    def _normalize_quiz_code(self, question: str, item: dict[str, Any]) -> tuple[str, str | None]:
+        """Support separate code fields and markdown fences without showing duplicate code."""
+        code_value = item.get("code_snippet") or item.get("codeBlock") or item.get("code")
+        code_snippet = str(code_value).strip() if code_value is not None else ""
+
+        fence_match = re.search(r"```(?:[a-zA-Z0-9_+-]+)?\s*(.*?)```", question, flags=re.DOTALL)
+        if fence_match:
+            if not code_snippet:
+                code_snippet = fence_match.group(1).strip()
+            question = re.sub(r"```(?:[a-zA-Z0-9_+-]+)?\s*.*?```", "", question, flags=re.DOTALL).strip()
+
+        if code_snippet and code_snippet.lower() in {"none", "null", "n/a", "[code here]", "code here"}:
+            code_snippet = ""
+
+        return question, code_snippet or None
+
+    def _question_requires_code(self, question: str) -> bool:
+        lowered = question.lower()
+        code_references = [
+            "following code",
+            "code snippet",
+            "program below",
+            "following program",
+            "given code",
+            "output of this code",
+            "output of the code",
+        ]
+        return any(reference in lowered for reference in code_references)
 
 
 ai_service = AIService()

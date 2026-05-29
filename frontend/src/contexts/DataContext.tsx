@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { goalsApi, progressApi, analyticsApi, gamificationApi } from '../lib/api'
 import { Goal, Analytics, ActivityData } from '../types'
-import { debounce } from '../utils/debounce'
 import { useAuth } from './AuthContext'
 
 interface DataContextType {
@@ -18,7 +17,8 @@ interface DataContextType {
   activities: ActivityData[]
   setActivities: (activities: ActivityData[]) => void
   loadingActivities: boolean
-  refreshActivities: () => Promise<void>
+  activitiesError: string | null
+  refreshActivities: (limit?: number) => Promise<void>
   addActivity: (newActivity: ActivityData) => void
   
   levelData: any
@@ -43,6 +43,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
   const [loadingActivities, setLoadingActivities] = useState(false)
   const [loadingLevel, setLoadingLevel] = useState(false)
+  const [activitiesError, setActivitiesError] = useState<string | null>(null)
   const [initialized, setInitialized] = useState(false)
   
   const loading = loadingGoals || loadingAnalytics || loadingActivities || loadingLevel
@@ -81,24 +82,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [loadingAnalytics])
 
-  const refreshActivities = useCallback(
-  debounce(async () => {
+  const refreshActivities = useCallback(async (limit = 5) => {
     if (loadingActivities) return
     try {
       setLoadingActivities(true)
-      const response = await analyticsApi.getActivity(5)
+      setActivitiesError(null)
+      const response = await analyticsApi.getActivity(limit)
       setActivities(response.data)
     } catch (error) {
       console.error('Failed to load activities:', error)
+      setActivitiesError('Failed to load recent activity.')
     } finally {
       setLoadingActivities(false)
     }
-  }, 1000),
-  [loadingActivities]
-)
+  }, [loadingActivities])
 
   const addActivity = useCallback((newActivity: ActivityData) => {
-    setActivities(prev => [newActivity, ...prev.slice(0, 9)])
+    setActivities(prev => [newActivity, ...prev.filter((item) => item.id !== newActivity.id)].slice(0, 5))
   }, [])
 
   const refreshLevel = useCallback(async () => {
@@ -154,6 +154,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         activities,
         setActivities,
         loadingActivities,
+        activitiesError,
         refreshActivities,
         addActivity,
         levelData,

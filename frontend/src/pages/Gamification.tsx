@@ -17,6 +17,8 @@ import {
   Medal
 } from 'lucide-react'
 import { gamificationApi } from '../lib/api'
+import { useToast } from '../components/ui/ToastContext'
+import { useAchievementNotifications } from '../hooks/useAchievementNotifications'
 
 interface Achievement {
   id: number
@@ -38,6 +40,8 @@ interface LevelProgress {
 }
 
 export default function Gamification() {
+  const toast = useToast()
+  const { showAchievements } = useAchievementNotifications()
   const [achievements, setAchievements] = useState<{ earned: Achievement[], locked: Achievement[] }>({ earned: [], locked: [] })
   const [levelProgress, setLevelProgress] = useState<LevelProgress | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'achievements'>('overview')
@@ -80,6 +84,7 @@ export default function Gamification() {
       const response = await gamificationApi.checkAchievements()
       if (response.data.new_achievements?.length > 0) {
         setNewlyEarned(response.data.new_achievements)
+        showAchievements(response.data.new_achievements, response.data.level_up ? { new_level: response.data.new_level } : null)
         if (response.data.level_up) {
           setLevelUpInfo({
             oldLevel: response.data.old_level,
@@ -91,6 +96,7 @@ export default function Gamification() {
         }
         loadData()
       } else {
+        toast.info('No new achievements yet.')
         setActiveTab('achievements')
         setTimeout(() => {
           const lockedSection = document.getElementById('locked-achievements')
@@ -101,7 +107,7 @@ export default function Gamification() {
       }
     } catch (error) {
       console.error('Failed to check achievements:', error)
-      alert('Failed to check achievements. Please try again.')
+      toast.error('Failed to check achievements. Please try again.')
     } finally {
       setIsCheckingAchievements(false)
     }

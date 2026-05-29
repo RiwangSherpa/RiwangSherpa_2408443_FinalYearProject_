@@ -1,319 +1,449 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { Flame, Clock, Target, GraduationCap, Plus, HelpCircle, Timer, BookOpen, ChevronRight } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  BookOpen,
+  ChevronRight,
+  Clock,
+  Flame,
+  GraduationCap,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Target,
+} from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
+import { progressApi, roadmapsApi } from '../lib/api'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
+import Badge from '../components/ui/Badge'
 import Skeleton from '../components/ui/Skeleton'
+import ActivityList from '../components/activity/ActivityList'
+import type { RoadmapStep } from '../types'
+
+type GoalRoadmapSummary = {
+  total: number
+  completed: number
+  nextStep?: RoadmapStep
+}
+
+function formatDuration(minutes: number) {
+  const safeMinutes = Math.max(0, Math.round(minutes || 0))
+  const hours = Math.floor(safeMinutes / 60)
+  const mins = safeMinutes % 60
+  if (hours === 0) return `${mins}m`
+  if (mins === 0) return `${hours}h`
+  return `${hours}h ${mins}m`
+}
+
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
+function progressFor(summary?: GoalRoadmapSummary) {
+  if (!summary || summary.total === 0) return 0
+  return Math.round((summary.completed / summary.total) * 100)
+}
 
 export default function Home() {
   const { user } = useAuth()
-  const { goals, analytics, activities, levelData, loading } = useData()
+  const {
+    goals,
+    analytics,
+    activities,
+    activitiesError,
+    levelData,
+    loading,
+    loadingActivities,
+    refreshGoals,
+    refreshAnalytics,
+    refreshActivities,
+    refreshLevel,
+  } = useData()
   const navigate = useNavigate()
+  const refreshedOnMount = useRef(false)
+  const [roadmapSummaries, setRoadmapSummaries] = useState<Record<number, GoalRoadmapSummary>>({})
+  const [loadingRoadmaps, setLoadingRoadmaps] = useState(false)
+  const [weekMinutes, setWeekMinutes] = useState(0)
 
-  if (loading) {
+  useEffect(() => {
+    if (refreshedOnMount.current) return
+    refreshedOnMount.current = true
+    refreshGoals()
+    refreshAnalytics()
+    refreshActivities()
+    refreshLevel()
+  }, [refreshActivities, refreshAnalytics, refreshGoals, refreshLevel])
+
+  useEffect(() => {
+    const loadDashboardExtras = async () => {
+      try {
+        setLoadingRoadmaps(true)
+        const activeGoals = goals.filter((goal) => !goal.is_completed).slice(0, 8)
+        const summaries = await Promise.all(
+          activeGoals.map(async (goal) => {
+            try {
+              const response = await roadmapsApi.getByGoal(goal.id)
+              const steps: RoadmapStep[] = response.data || []
+              const completed = steps.filter((step) => step.is_completed).length
+              return [
+                goal.id,
+                {
+                  total: steps.length,
+                  completed,
+                  nextStep: steps.find((step) => !step.is_completed),
+                },
+              ] as const
+            } catch {
+              return [goal.id, { total: 0, completed: 0 }] as const
+            }
+          })
+        )
+        setRoadmapSummaries(Object.fromEntries(summaries))
+      } finally {
+        setLoadingRoadmaps(false)
+      }
+    }
+
+    loadDashboardExtras()
+  }, [goals])
+
+  useEffect(() => {
+    const loadWeekStudy = async () => {
+      try {
+        const response = await progressApi.getStudyHistory(7)
+        const total = (response.data.history || []).reduce((sum: number, day: { minutes?: number }) => sum + Number(day.minutes || 0), 0)
+        setWeekMinutes(total)
+      } catch (error) {
+        console.error('Failed to load weekly study time:', error)
+      }
+    }
+    loadWeekStudy()
+  }, [])
+
+  const username = user?.full_name || user?.email?.split('@')[0] || 'there'
+  const activeGoals = goals.filter((goal) => !goal.is_completed)
+  const completedGoals = goals.filter((goal) => goal.is_completed)
+  const completionRate = analytics && analytics.total_goals > 0
+    ? Math.round((analytics.completed_goals / analytics.total_goals) * 100)
+    : 0
+
+  const continueGoal = useMemo(() => {
+    return activeGoals.find((goal) => roadmapSummaries[goal.id]?.nextStep)
+      || activeGoals.find((goal) => roadmapSummaries[goal.id]?.total === 0)
+      || activeGoals[0]
+  }, [activeGoals, roadmapSummaries])
+
+  const continueSummary = continueGoal ? roadmapSummaries[continueGoal.id] : undefined
+  const remainingTasks = continueSummary?.total
+    ? Math.max(0, continueSummary.total - continueSummary.completed)
+    : activeGoals.length
+
+  const primaryAction = continueGoal
+    ? {
+        label: continueSummary?.total === 0 ? 'Generate Roadmap' : 'Continue Learning',
+        href: `/roadmaps/${continueGoal.id}`,
+      }
+    : {
+        label: 'Create Your First Goal',
+        href: '/goals',
+      }
+
+  const libraryGoals = [...activeGoals, ...completedGoals].slice(0, 3)
+  const dashboardActivities = activities.slice(0, 5)
+
+  if (loading && !analytics && goals.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <Skeleton variant="text" width="300px" height="2rem" className="mb-2" />
-          <Skeleton variant="text" width="200px" height="1.5rem" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <Skeleton variant="text" lines={3} />
-            </Card>
-          ))}
+      <div className="min-h-screen bg-neutral-50 px-4 py-8 dark:bg-dark-bg-primary sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-6 rounded-card border border-neutral-200 bg-white p-6 dark:border-dark-border-primary dark:bg-dark-bg-secondary">
+            <Skeleton variant="text" width="300px" height="2rem" className="mb-3" />
+            <Skeleton variant="text" width="520px" height="1rem" />
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {[1, 2, 3, 4].map((item) => (
+              <Card key={item}><Skeleton variant="text" lines={4} /></Card>
+            ))}
+          </div>
         </div>
       </div>
     )
   }
 
-  const completionRate = analytics && analytics.total_goals > 0
-    ? Math.round((analytics.completed_goals / analytics.total_goals) * 100)
-    : 0
-
-  const recentGoals = goals.slice(0, 6)
-
-  const getGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour < 12) return 'Good morning'
-    if (hour < 18) return 'Good afternoon'
-    return 'Good evening'
-  }
+  const stats = [
+    {
+      label: 'Active Streak',
+      value: `${analytics?.current_streak_days || 0} day${analytics?.current_streak_days === 1 ? '' : 's'}`,
+      helper: analytics?.current_streak_days ? 'Keep the chain alive today' : 'Study today to start a streak',
+      icon: Flame,
+      tone: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
+    },
+    {
+      label: 'Study Time This Week',
+      value: formatDuration(weekMinutes),
+      helper: 'Tracked across sessions',
+      icon: Clock,
+      tone: 'bg-primary-muted text-primary dark:bg-primary/20 dark:text-primary-dark',
+    },
+    {
+      label: 'Goal Progress',
+      value: `${completionRate}%`,
+      helper: `${completedGoals.length} of ${goals.length} goals complete`,
+      icon: Target,
+      tone: 'bg-primary-muted text-primary dark:bg-primary/20 dark:text-primary-dark',
+      progress: completionRate,
+    },
+    {
+      label: 'Current Level',
+      value: `Level ${levelData?.current_level || 1}`,
+      helper: `${levelData?.total_xp || 0} XP total`,
+      icon: GraduationCap,
+      tone: 'bg-secondary-light text-secondary dark:bg-secondary/20 dark:text-secondary-dark',
+      progress: levelData?.progress_percentage || 0,
+    },
+  ]
 
   return (
-    <div className="bg-neutral-50 dark:bg-dark-bg-primary min-h-screen px-6 py-8 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto">
-        {/* Header Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
+    <div className="min-h-screen bg-neutral-50 px-4 py-8 transition-colors duration-300 dark:bg-dark-bg-primary sm:px-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <motion.section
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex justify-between items-start gap-8 mb-8"
+          className="overflow-hidden rounded-card border border-primary-muted bg-white shadow-sm dark:border-dark-border-primary dark:bg-dark-bg-secondary"
         >
-          <div>
-            <h1 className="font-heading text-3xl font-bold text-primary dark:text-primary-dark mb-2 transition-colors">
-              {getGreeting()}, {user?.email ? user.email.split('@')[0] : 'there'}
-            </h1>
-            <p className="text-sm text-neutral-500 dark:text-dark-text-secondary max-w-sm font-body transition-colors">
-              Ready to tackle your learning objectives? You're only 3 tasks away from completing your weekly goal.
-            </p>
-          </div>
-          {/* Quote Card */}
-          <div className="bg-neutral-100 dark:bg-dark-bg-tertiary border-l-4 border-secondary dark:border-secondary-dark px-4 py-3 rounded-r-lg max-w-xs hidden md:block transition-colors">
-            <span className="text-xs font-semibold uppercase tracking-widest text-secondary dark:text-secondary-dark block mb-1 transition-colors">TODAY'S FOCUS</span>
-            <p className="text-sm text-neutral-700 dark:text-dark-text-secondary italic font-body transition-colors">
-              "The beautiful thing about learning is that no one can take it away from you." — B.B. King
-            </p>
-          </div>
-        </motion.div>
-
-        {/* Stats Row */}
-        {analytics && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {/* Streak Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0 }}
-            >
-              <div className="bg-tertiary-light dark:bg-dark-bg-tertiary border border-tertiary-muted dark:border-dark-border-secondary rounded-card p-4 transition-colors">
-                <div className="flex justify-between items-start">
-                  <span className="text-xs font-semibold uppercase tracking-widest text-amber-600 dark:text-tertiary">Active Streak</span>
-                  <Flame className="w-4 h-4 text-tertiary dark:text-tertiary" />
-                </div>
-                <p className="font-heading text-2xl font-bold text-neutral-900 dark:text-dark-text-primary mt-2 transition-colors">{analytics.current_streak_days} Days</p>
-                <p className="text-xs text-neutral-500 dark:text-dark-text-tertiary mt-0.5 transition-colors">Keep it going!</p>
-              </div>
-            </motion.div>
-
-            {/* Study Time Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <div className="bg-white dark:bg-dark-bg-secondary border border-neutral-200 dark:border-dark-border-primary rounded-card p-4 transition-colors">
-                <div className="flex justify-between items-start">
-                  <span className="text-xs font-semibold uppercase tracking-widest text-neutral-400 dark:text-dark-text-tertiary">Study Time</span>
-                  <Clock className="w-4 h-4 text-neutral-400 dark:text-dark-text-tertiary" />
-                </div>
-                <p className="font-heading text-2xl font-bold text-neutral-900 dark:text-dark-text-primary mt-2 transition-colors">
-                  {Math.floor(analytics.total_study_time_minutes / 60)}h {analytics.total_study_time_minutes % 60}m
-                </p>
-                <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary mt-0.5 transition-colors">This week</p>
-              </div>
-            </motion.div>
-
-            {/* Goal Progress Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <div className="bg-white dark:bg-dark-bg-secondary border border-neutral-200 dark:border-dark-border-primary rounded-card p-4 transition-colors">
-                <div className="flex justify-between items-start">
-                  <span className="text-xs font-semibold uppercase tracking-widest text-neutral-400 dark:text-dark-text-tertiary">Goal Progress</span>
-                  <Target className="w-4 h-4 text-neutral-400 dark:text-dark-text-tertiary" />
-                </div>
-                <p className="font-heading text-2xl font-bold text-neutral-900 dark:text-dark-text-primary mt-2 transition-colors">{completionRate}%</p>
-                <div className="w-full h-1.5 bg-neutral-200 dark:bg-dark-bg-tertiary rounded-full mt-2 transition-colors">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${completionRate}%` }}
-                    transition={{ duration: 0.8, delay: 0.4 }}
-                    className="h-1.5 bg-primary dark:bg-primary-dark rounded-full transition-colors"
-                  />
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Level Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <div className="bg-primary rounded-card p-4">
-                <div className="flex justify-between items-start">
-                  <span className="text-xs font-semibold uppercase tracking-widest text-white/60">Level</span>
-                  <GraduationCap className="w-4 h-4 text-white/60" />
-                </div>
-                <p className="font-heading text-2xl font-bold text-white mt-2">
-                  {levelData?.current_level || 1}
-                </p>
-                <p className="text-xs text-white/60 mt-0.5">
-                  Next level at {levelData?.xp_needed_for_level || 100} XP
+          <div className="grid gap-6 bg-gradient-to-br from-primary-muted/80 via-white to-white p-6 dark:from-primary/15 dark:via-dark-bg-secondary dark:to-dark-bg-secondary lg:grid-cols-[minmax(0,1fr)_22rem] lg:p-7">
+            <div className="flex flex-col justify-between gap-6">
+              <div>
+                <Badge variant="success" size="sm">Dashboard</Badge>
+                <h1 className="mt-4 font-heading text-3xl font-bold text-primary dark:text-primary-dark md:text-4xl">
+                  {getGreeting()}, {username}
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-600 dark:text-dark-text-secondary">
+                  Ready to continue learning? Your next milestone is waiting.
                 </p>
               </div>
-            </motion.div>
-          </div>
-        )}
-
-        {/* Quick Actions Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {/* Create Goal CTA */}
-          <Card className="flex items-center justify-between cursor-pointer hover:border-neutral-300 dark:hover:border-dark-border-secondary transition-colors group" onClick={() => navigate('/goals')}>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-dark-bg-tertiary flex items-center justify-center group-hover:bg-primary-muted dark:group-hover:bg-primary/20 transition-colors">
-                <Target className="w-4 h-4 text-neutral-500 dark:text-dark-text-tertiary group-hover:text-primary dark:group-hover:text-primary-dark transition-colors" />
-              </div>
               <div>
-                <p className="text-sm font-semibold text-neutral-900 dark:text-dark-text-primary">Create New Goal</p>
-                <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary">Set your next milestone</p>
+                <Button onClick={() => navigate(primaryAction.href)}>
+                  <ChevronRight className="mr-2 h-4 w-4" />
+                  {primaryAction.label}
+                </Button>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-neutral-300 dark:text-dark-text-tertiary" />
-          </Card>
 
-          {/* Take Quiz CTA */}
-          <Card className="flex items-center justify-between cursor-pointer hover:border-neutral-300 dark:hover:border-dark-border-secondary transition-colors group" onClick={() => navigate('/quiz')}>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-dark-bg-tertiary flex items-center justify-center group-hover:bg-primary-muted dark:group-hover:bg-primary/20 transition-colors">
-                <HelpCircle className="w-4 h-4 text-neutral-500 dark:text-dark-text-tertiary group-hover:text-primary dark:group-hover:text-primary-dark transition-colors" />
+            <div className="rounded-lg border border-primary-muted bg-white/80 p-4 shadow-sm backdrop-blur dark:border-dark-border-primary dark:bg-dark-bg-tertiary/80">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-primary dark:text-primary-dark">Today's Focus</p>
+                  <p className="mt-1 text-sm font-semibold text-neutral-900 dark:text-dark-text-primary">
+                    {continueGoal?.title || 'Start with one clear goal'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-neutral-900 dark:text-dark-text-primary">Take a Quiz</p>
-                <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary">Validate your knowledge</p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-neutral-300 dark:text-dark-text-tertiary" />
-          </Card>
-
-          {/* Start Timer CTA */}
-          <div className="bg-primary dark:bg-primary-dark rounded-card p-4 flex items-center justify-between cursor-pointer hover:bg-primary-light dark:hover:bg-primary/90 transition-colors group" onClick={() => navigate('/productivity')}>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-white/10 dark:bg-white/20 flex items-center justify-center">
-                <Timer className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">Start Timer</p>
-                <p className="text-xs text-white/60 dark:text-white/70">Enter focus mode</p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-white/40 dark:text-white/50" />
-          </div>
-        </div>
-
-        {/* Two-Column Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Left - Your Library */}
-          <div className="lg:col-span-3">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="section-heading dark:text-dark-text-primary">Your Library</h2>
-              <Link to="/goals" className="text-sm font-medium text-primary dark:text-primary-dark hover:underline transition-colors">
-                View All
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {recentGoals.length === 0 ? (
-                <Card className="col-span-2 flex flex-col items-center justify-center py-16 text-center">
-                  <BookOpen className="w-10 h-10 text-neutral-300 dark:text-dark-text-tertiary mb-3" />
-                  <p className="text-sm font-semibold text-neutral-600 dark:text-dark-text-secondary mb-1">No goals yet</p>
-                  <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary mb-4">Create your first learning goal to get started</p>
-                  <Button onClick={() => navigate('/goals')}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Goal
-                  </Button>
-                </Card>
-              ) : (
-                recentGoals.map((goal, index) => (
-                  <motion.div
-                    key={goal.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Link
-                      to={`/roadmaps/${goal.id}`}
-                      className="block relative rounded-card overflow-hidden h-36 cursor-pointer group border border-neutral-200 dark:border-dark-border-primary bg-white dark:bg-dark-bg-secondary hover:border-neutral-300 dark:hover:border-dark-border-secondary transition-colors"
-                    >
-                      {/* Content */}
-                      <div className="p-4 h-full flex flex-col justify-between">
-                        <div>
-                          {/* Status Pill */}
-                          <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-pill uppercase tracking-wide mb-2">
-                            {goal.is_completed ? (
-                              <span className="bg-primary text-white dark:bg-primary-dark dark:text-white">Completed</span>
-                            ) : (
-                              <span className="bg-tertiary text-white dark:bg-tertiary dark:text-white">Learning</span>
-                            )}
-                          </span>
-                          <p className="text-sm font-semibold text-neutral-900 dark:text-dark-text-primary font-heading leading-tight">{goal.title}</p>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <p className="text-xs text-neutral-500 dark:text-dark-text-tertiary">
-                            {goal.learning_style || 'balanced'}
-                          </p>
-                          <ChevronRight className="w-4 h-4 text-neutral-300 dark:text-dark-text-tertiary group-hover:text-neutral-400 dark:group-hover:text-dark-text-secondary transition-colors" />
-                        </div>
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))
+              <p className="mt-4 text-sm leading-6 text-neutral-600 dark:text-dark-text-secondary">
+                {continueSummary?.nextStep
+                  ? `Next step: ${continueSummary.nextStep.title}`
+                  : continueGoal
+                    ? 'Generate a roadmap so Study Buddy can guide your next move.'
+                    : 'Create a goal and Study Buddy will help organize your learning path.'}
+              </p>
+              {continueGoal && (
+                <p className="mt-3 text-xs font-medium text-neutral-500 dark:text-dark-text-secondary">
+                  {Math.max(remainingTasks || 0, 0)} task{remainingTasks === 1 ? '' : 's'} until your next visible milestone
+                </p>
               )}
             </div>
           </div>
+        </motion.section>
 
-          {/* Right - Recent Activity + Upgrade */}
-          <div className="lg:col-span-2">
-            <h2 className="section-heading dark:text-dark-text-primary mb-4">Recent Activity</h2>
-            <div className="flex flex-col gap-3 mb-6">
-              {activities.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-sm text-neutral-500 dark:text-dark-text-tertiary">No recent activity</p>
-                  <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary mt-1">Start learning to see your activity here</p>
-                </div>
-              ) : (
-                activities.map((activity) => {
-                  const getActivityIcon = () => {
-                    switch (activity.type) {
-                      case 'quiz_attempt':
-                        return <HelpCircle className="w-3.5 h-3.5 text-neutral-500 dark:text-dark-text-tertiary" />
-                      case 'study_session':
-                        return <BookOpen className="w-3.5 h-3.5 text-neutral-500 dark:text-dark-text-tertiary" />
-                      case 'goal_completed':
-                        return <Target className="w-3.5 h-3.5 text-neutral-500 dark:text-dark-text-tertiary" />
-                      case 'goal_created':
-                        return <Plus className="w-3.5 h-3.5 text-neutral-500 dark:text-dark-text-tertiary" />
-                      case 'level_up':
-                        return <GraduationCap className="w-3.5 h-3.5 text-neutral-500 dark:text-dark-text-tertiary" />
-                      default:
-                        return <BookOpen className="w-3.5 h-3.5 text-neutral-500 dark:text-dark-text-tertiary" />
-                    }
-                  }
-
-                  return (
-                    <div key={activity.id} className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-dark-bg-tertiary flex items-center justify-center flex-shrink-0 transition-colors">
-                        {getActivityIcon()}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-neutral-800 dark:text-dark-text-primary">{activity.title}</p>
-                        <p className="text-xs text-neutral-400 dark:text-dark-text-tertiary mt-0.5">
-                          {activity.description}
-                          {activity.goal_title && ` • ${activity.goal_title}`}
-                        </p>
-                      </div>
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon
+            return (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.04 }}
+              >
+                <Card className="h-full shadow-sm">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400 dark:text-dark-text-tertiary">{stat.label}</p>
+                      <p className="mt-3 font-heading text-3xl font-bold text-neutral-950 dark:text-dark-text-primary">{stat.value}</p>
                     </div>
-                  )
-                })
-              )}
-            </div>
+                    <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${stat.tone}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm text-neutral-500 dark:text-dark-text-secondary">{stat.helper}</p>
+                  {'progress' in stat && (
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-neutral-100 dark:bg-dark-bg-tertiary">
+                      <div className="h-full rounded-full bg-primary dark:bg-primary-dark" style={{ width: `${Math.max(0, Math.min(100, stat.progress || 0))}%` }} />
+                    </div>
+                  )}
+                </Card>
+              </motion.div>
+            )
+          })}
+        </section>
 
-            {/* Upgrade Card - Only show for Free users */}
-            {user?.subscription_plan !== 'pro' && (
-              <div className="bg-secondary-light dark:bg-dark-bg-tertiary rounded-card p-4 border border-secondary-muted dark:border-dark-border-secondary transition-colors">
-                <p className="font-heading text-sm font-semibold text-secondary dark:text-secondary-dark mb-1 transition-colors">Study Buddy Premium</p>
-                <p className="text-xs text-neutral-500 dark:text-dark-text-tertiary mb-3 transition-colors">Unlock unlimited AI insights and custom flashcards.</p>
-                <button className="btn-primary text-xs px-4 py-2" onClick={() => navigate('/subscription')}>
-                  Upgrade Now
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(24rem,0.8fr)]">
+          <div className="space-y-6">
+            <Card className="shadow-sm">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="section-heading">Continue Learning</h2>
+                  <p className="mt-1 text-sm text-neutral-500 dark:text-dark-text-secondary">Resume the most useful next step.</p>
+                </div>
+                {loadingRoadmaps && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+              </div>
+
+              {continueGoal ? (
+                <div className="mt-5 rounded-lg border border-primary-muted bg-primary-muted/50 p-4 dark:border-primary-dark/30 dark:bg-primary/10">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0">
+                      <Badge variant={continueGoal.is_completed ? 'success' : 'info'} size="sm">
+                        {continueSummary?.total ? `${continueSummary.completed}/${continueSummary.total} steps` : 'Roadmap needed'}
+                      </Badge>
+                      <h3 className="mt-3 font-heading text-xl font-bold text-neutral-950 dark:text-dark-text-primary">{continueGoal.title}</h3>
+                      <p className="mt-2 text-sm text-neutral-600 dark:text-dark-text-secondary">
+                        {continueSummary?.nextStep
+                          ? `Next: ${continueSummary.nextStep.title}`
+                          : continueSummary?.total === 0
+                            ? 'No roadmap yet. Generate one to make this goal actionable.'
+                            : 'All visible roadmap steps are complete.'}
+                      </p>
+                    </div>
+                    <Button onClick={() => navigate(`/roadmaps/${continueGoal.id}`)}>
+                      {continueSummary?.total === 0 ? 'Generate Roadmap' : 'Continue'}
+                    </Button>
+                  </div>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-white dark:bg-dark-bg-tertiary">
+                    <div className="h-full rounded-full bg-primary dark:bg-primary-dark" style={{ width: `${progressFor(continueSummary)}%` }} />
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-5 rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center dark:border-dark-border-primary dark:bg-dark-bg-tertiary">
+                  <Target className="mx-auto mb-3 h-10 w-10 text-neutral-300" />
+                  <p className="font-semibold text-neutral-900 dark:text-dark-text-primary">No learning goals yet</p>
+                  <p className="mt-1 text-sm text-neutral-500 dark:text-dark-text-secondary">Create your first goal to unlock a guided roadmap.</p>
+                  <Button className="mt-4" onClick={() => navigate('/goals')}>Create your first goal</Button>
+                </div>
+              )}
+            </Card>
+
+            <Card className="shadow-sm">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="section-heading">Your Library</h2>
+                  <p className="mt-1 text-sm text-neutral-500 dark:text-dark-text-secondary">A few active paths worth keeping close.</p>
+                </div>
+                <Link to="/goals" className="text-sm font-semibold text-primary hover:underline dark:text-primary-dark">View all</Link>
+              </div>
+
+              {libraryGoals.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-8 text-center dark:border-dark-border-primary dark:bg-dark-bg-tertiary">
+                  <BookOpen className="mx-auto mb-3 h-10 w-10 text-neutral-300" />
+                  <p className="font-semibold text-neutral-900 dark:text-dark-text-primary">No learning goals yet</p>
+                  <p className="mt-1 text-sm text-neutral-500 dark:text-dark-text-secondary">Start with a goal and your library will fill with useful learning paths.</p>
+                  <Button className="mt-4" onClick={() => navigate('/goals')}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create your first goal
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                  {libraryGoals.map((goal, index) => {
+                    const summary = roadmapSummaries[goal.id]
+                    const progress = goal.is_completed ? 100 : progressFor(summary)
+                    return (
+                      <motion.button
+                        key={goal.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.04 }}
+                        onClick={() => navigate(`/roadmaps/${goal.id}`)}
+                        className="rounded-lg border border-neutral-200 bg-white p-4 text-left transition hover:border-primary-muted hover:shadow-sm dark:border-dark-border-primary dark:bg-dark-bg-tertiary dark:hover:border-primary-dark"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-heading text-base font-bold text-neutral-950 dark:text-dark-text-primary">{goal.title}</p>
+                            <p className="mt-1 text-xs capitalize text-neutral-500 dark:text-dark-text-secondary">{goal.learning_style || 'balanced'} learning</p>
+                          </div>
+                          <Badge variant={goal.is_completed ? 'success' : 'info'} size="sm">
+                            {goal.is_completed ? 'Completed' : 'Active'}
+                          </Badge>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between text-xs text-neutral-500 dark:text-dark-text-secondary">
+                          <span>{summary?.total ? `${summary.completed}/${summary.total} steps` : 'No roadmap yet'}</span>
+                          <span className="font-semibold text-primary dark:text-primary-dark">{progress}%</span>
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-100 dark:bg-dark-bg-primary">
+                          <div className="h-full rounded-full bg-primary dark:bg-primary-dark" style={{ width: `${progress}%` }} />
+                        </div>
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              )}
+            </Card>
+          </div>
+
+          <Card className="h-fit shadow-sm">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="section-heading">Recent Activity</h2>
+                <p className="mt-1 text-sm text-neutral-500 dark:text-dark-text-secondary">Latest updates from your learning workspace.</p>
+              </div>
+              <div className="flex items-center gap-1">
+                <Link to="/activity" className="rounded-lg px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary-muted dark:text-primary-dark dark:hover:bg-primary/20">
+                  See all
+                </Link>
+                <button
+                  onClick={() => refreshActivities()}
+                  className="rounded-lg p-2 text-neutral-400 transition hover:bg-neutral-100 hover:text-primary dark:hover:bg-dark-bg-tertiary"
+                  title="Refresh activity"
+                >
+                  <RefreshCw className={`h-4 w-4 ${loadingActivities ? 'animate-spin' : ''}`} />
                 </button>
               </div>
+            </div>
+
+            {loadingActivities && activities.length === 0 ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="flex gap-3 rounded-lg border border-neutral-100 p-3 dark:border-dark-border-primary">
+                    <Skeleton variant="circular" width="40px" height="40px" />
+                    <div className="flex-1">
+                      <Skeleton variant="text" width="65%" height="1rem" className="mb-2" />
+                      <Skeleton variant="text" width="90%" height="0.8rem" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : activitiesError ? (
+              <div className="rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+                <p className="font-semibold">Could not load recent activity.</p>
+                <Button size="sm" variant="secondary" className="mt-3" onClick={() => refreshActivities()}>Retry</Button>
+              </div>
+            ) : activities.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-8 text-center dark:border-dark-border-primary dark:bg-dark-bg-tertiary">
+                <Clock className="mx-auto mb-3 h-10 w-10 text-neutral-300" />
+                <p className="font-semibold text-neutral-900 dark:text-dark-text-primary">No recent activity yet</p>
+                <p className="mt-1 text-sm text-neutral-500 dark:text-dark-text-secondary">Start by creating a goal.</p>
+              </div>
+            ) : (
+              <ActivityList activities={dashboardActivities} compact />
             )}
-          </div>
-        </div>
+          </Card>
+        </section>
       </div>
     </div>
   )

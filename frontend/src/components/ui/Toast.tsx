@@ -4,8 +4,9 @@ import { CheckCircle2, XCircle, AlertCircle, Info, X } from 'lucide-react'
 
 export interface Toast {
   id: string
+  title?: string
   message: string
-  type: 'success' | 'error' | 'warning' | 'info'
+  type: 'success' | 'error' | 'warning' | 'info' | 'achievement'
   duration?: number
 }
 
@@ -28,14 +29,16 @@ function ToastItem({ toast, onRemove }: ToastProps) {
     success: CheckCircle2,
     error: XCircle,
     warning: AlertCircle,
-    info: Info
+    info: Info,
+    achievement: CheckCircle2
   }
 
   const colors = {
     success: 'bg-primary-muted border-primary text-primary',
     error: 'bg-red-50 border-red-200 text-red-700',
     warning: 'bg-tertiary-light border-tertiary text-tertiary',
-    info: 'bg-secondary-light border-secondary text-secondary'
+    info: 'bg-secondary-light border-secondary text-secondary',
+    achievement: 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-200'
   }
 
   const Icon = icons[toast.type]
@@ -48,7 +51,10 @@ function ToastItem({ toast, onRemove }: ToastProps) {
       className={`flex items-center gap-3 p-4 rounded-lg border ${colors[toast.type]} min-w-[300px] max-w-md`}
     >
       <Icon className="w-5 h-5 flex-shrink-0" />
-      <p className="flex-1 text-sm font-medium">{toast.message}</p>
+      <div className="flex-1">
+        {toast.title && <p className="text-sm font-semibold">{toast.title}</p>}
+        <p className="text-sm font-medium">{toast.message}</p>
+      </div>
       <button
         onClick={() => onRemove(toast.id)}
         className="flex-shrink-0 text-current opacity-70 hover:opacity-100"

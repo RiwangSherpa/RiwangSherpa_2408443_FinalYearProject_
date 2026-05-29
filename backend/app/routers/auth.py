@@ -21,6 +21,9 @@ from app.services.auth_service import (
     get_password_hash,
     verify_token,
 )
+from app.config import settings
+from app.services.email_service import send_password_reset_email_async
+from app.services.subscription_service import effective_subscription
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +139,19 @@ async def get_me(
     current_user: models.User = Depends(get_current_user),
 ):
     """Return current authenticated user"""
-    return current_user
+    subscription = effective_subscription(current_user)
+    return schemas.UserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        is_active=current_user.is_active,
+        subscription_plan=subscription["plan"],
+        subscription_expires_at=subscription["subscription_expires_at"],
+        is_pro=subscription["is_pro"],
+        provider=current_user.provider,
+        avatar_url=current_user.avatar_url,
+        created_at=current_user.created_at,
+    )
 
 
 @router.post(
@@ -151,9 +166,9 @@ async def forgot_password(
 
     user = get_user_by_email(db, request.email)
 
-    if not user:
+    if not user or user.provider == "google" or not user.hashed_password:
         logger.info(
-            "Password reset requested for non-existent email: %s",
+            "Password reset requested for non-resettable email: %s",
             request.email,
         )
         return {
@@ -161,8 +176,10 @@ async def forgot_password(
         }
 
     reset_token = create_password_reset_token_for_user(db, user)
+    reset_link = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={reset_token}"
+    send_password_reset_email_async(user.email, reset_link)
 
-    logger.info("Password reset token generated for %s", user.email)
+    logger.info("Password reset email queued for %s", user.email)
 
     return {
         "message": "If the email exists, a password reset link has been sent."
@@ -186,9 +203,14 @@ async def reset_password(
             detail="Invalid or expired reset token",
         )
 
-    user.hashed_password = get_password_hash(
-        reset_data.new_password.get_secret_value()
-    )
+    new_password = reset_data.new_password.get_secret_value()
+    if len(new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters",
+        )
+
+    user.hashed_password = get_password_hash(new_password)
     db.commit()
 
     use_password_reset_token(db, reset_data.token)

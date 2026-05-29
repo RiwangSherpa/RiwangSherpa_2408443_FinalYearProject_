@@ -12,6 +12,7 @@ from app import models, schemas
 from app.services.ai_service import ai_service
 from app.services.gamification import GamificationService
 from app.dependencies import get_current_user, track_usage
+from app.services.subscription_service import has_active_pro_subscription
 
 router = APIRouter()
 
@@ -23,7 +24,7 @@ async def generate_quiz(
 ):
     """Generate quiz questions using AI"""
     
-    if current_user.subscription_plan != models.SubscriptionPlan.PRO:
+    if not has_active_pro_subscription(current_user):
         today = date.today()
         usage = db.query(models.UserDailyUsage).filter(
             models.UserDailyUsage.user_id == current_user.id,
@@ -57,7 +58,7 @@ async def generate_quiz(
             schemas.QuizQuestion(**q) for q in ai_result["questions"]
         ]
         
-        if current_user.subscription_plan != models.SubscriptionPlan.PRO:
+        if not has_active_pro_subscription(current_user):
             await track_usage(current_user.id, "quiz", db)
         
         return schemas.QuizGenerateResponse(
@@ -163,45 +164,6 @@ async def submit_quiz(
             is_perfect = score == 100.0 and correct_count == len(questions)
             if is_perfect:
                 gamification_service.update_stats_from_activity(current_user.id, "perfect_quiz")
-
-            # Auto-create notes for wrong answers
-            for i, f in enumerate(feedback):
-                if not f["is_correct"]:
-                    question = questions[i]
-                    note_title = f"Quiz: {question.get('question', 'Unknown')[:50]}..."
-                    note_content = f"""# Quiz Mistake Review
-
-**Question:** {question.get('question')}
-
-**Your Answer:** Option {f['selected_answer'] + 1}
-**Correct Answer:** Option {f['correct_answer'] + 1}
-
-**Explanation:** {f.get('explanation', 'No explanation provided')}
-
-**Topic:** {topic}
-**From Goal:** {goal.title}
-
-This note was auto-generated from a quiz mistake to help you review and learn.
-"""
-                    # Check if note already exists
-                    existing = db.query(models.Note).filter(
-                        models.Note.user_id == current_user.id,
-                        models.Note.source_type == "quiz_wrong_answer",
-                        models.Note.source_id == quiz_result.id
-                    ).first()
-
-                    if not existing:
-                        wrong_note = models.Note(
-                            user_id=current_user.id,
-                            goal_id=goal_id,
-                            title=note_title,
-                            content=note_content,
-                            tags=["quiz-mistake", "review-needed", "auto-generated"],
-                            is_auto_generated=True,
-                            source_type="quiz_wrong_answer",
-                            source_id=quiz_result.id
-                        )
-                        db.add(wrong_note)
 
             db.commit()
 

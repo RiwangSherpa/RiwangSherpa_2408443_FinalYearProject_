@@ -43,17 +43,16 @@ export default function StudyTimeGraph({ data, title = 'Study Time' }: StudyTime
   }
   
   return (
-    <Card className="w-full">
-      <div className="p-6">
+    <Card className="w-full shadow-sm">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-xl">
-              <Calendar className="w-5 h-5 text-blue-600" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-muted text-primary dark:bg-primary/20 dark:text-primary-dark">
+              <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="section-heading">{title}</h3>
+              <p className="text-sm text-neutral-500 dark:text-dark-text-secondary">
                 Total: {hours}h {minutes}m
               </p>
             </div>
@@ -61,8 +60,8 @@ export default function StudyTimeGraph({ data, title = 'Study Time' }: StudyTime
           
           {/* Range Selector */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">Show:</span>
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <span className="text-sm text-neutral-500 dark:text-dark-text-secondary">Show:</span>
+            <div className="flex rounded-lg bg-neutral-100 p-1 dark:bg-dark-bg-tertiary">
               {[7, 14, 30].map((days) => (
                 <button
                   key={days}
@@ -72,8 +71,8 @@ export default function StudyTimeGraph({ data, title = 'Study Time' }: StudyTime
                   }}
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                     daysRange === days
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-white text-primary shadow-sm dark:bg-dark-bg-secondary dark:text-primary-dark'
+                      : 'text-neutral-600 hover:text-neutral-900 dark:text-dark-text-secondary dark:hover:text-dark-text-primary'
                   }`}
                 >
                   {days}D
@@ -95,7 +94,7 @@ export default function StudyTimeGraph({ data, title = 'Study Time' }: StudyTime
             <ChevronLeft className="w-4 h-4" />
             Previous
           </Button>
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-neutral-500 dark:text-dark-text-secondary">
             {visibleData.length > 0 && (
               <>
                 {new Date(visibleData[0].date).toLocaleDateString()} - {new Date(visibleData[visibleData.length - 1].date).toLocaleDateString()}
@@ -121,8 +120,8 @@ export default function StudyTimeGraph({ data, title = 'Study Time' }: StudyTime
               <AreaChart data={visibleData}>
                 <defs>
                   <linearGradient id="colorMinutes" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#059669" stopOpacity={0.28}/>
+                    <stop offset="95%" stopColor="#059669" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -150,7 +149,7 @@ export default function StudyTimeGraph({ data, title = 'Study Time' }: StudyTime
                 <Area 
                   type="monotone" 
                   dataKey="minutes" 
-                  stroke="#3B82F6" 
+                  stroke="#059669" 
                   strokeWidth={2}
                   fillOpacity={1} 
                   fill="url(#colorMinutes)" 
@@ -158,12 +157,11 @@ export default function StudyTimeGraph({ data, title = 'Study Time' }: StudyTime
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-400">
+            <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-neutral-200 bg-neutral-50 text-sm text-neutral-500 dark:border-dark-border-primary dark:bg-dark-bg-tertiary dark:text-dark-text-secondary">
               No study data available for this period
             </div>
           )}
         </div>
-      </div>
     </Card>
   )
 }

@@ -101,7 +101,7 @@ export default function Signup() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors bg-white text-neutral-900 placeholder-neutral-400"
-                  placeholder="John Doe"
+                  placeholder="Rajesh Hamal"
                 />
               </div>
             </div>

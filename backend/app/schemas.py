@@ -101,6 +101,7 @@ class RoadmapGenerateResponse(BaseModel):
 
 class QuizQuestion(BaseModel):
     question: str
+    code_snippet: Optional[str] = None
     options: List[str]
     correct_answer: int
     explanation: Optional[str] = None
@@ -212,6 +213,7 @@ class UserResponse(BaseModel):
     is_active: bool
     subscription_plan: str
     subscription_expires_at: Optional[datetime]
+    is_pro: bool = False
     provider: str = "local"
     avatar_url: Optional[str] = None
     created_at: datetime
@@ -234,19 +236,78 @@ class PasswordResetResponse(BaseModel):
 
 class SubscriptionStatus(BaseModel):
     plan: str
+    is_pro: bool
     is_active: bool
     expires_at: Optional[datetime]
+    subscription_expires_at: Optional[datetime]
+    features: Dict[str, Any] = Field(default_factory=dict)
 
 
 class PaymentRequest(BaseModel):
     plan: SubscriptionPlan
-    payment_method: str = "demo"
+    payment_method: str = "manual"
 
 
 class PaymentResponse(BaseModel):
     success: bool
     message: str
     subscription_status: SubscriptionStatus
+
+
+class KhaltiInitiateResponse(BaseModel):
+    pidx: str
+    payment_url: str
+    expires_at: Optional[datetime] = None
+    expires_in: Optional[int] = None
+    amount_paisa: int
+
+
+class KhaltiVerifyRequest(BaseModel):
+    pidx: str = Field(..., min_length=1)
+
+
+class KhaltiVerifyResponse(BaseModel):
+    success: bool
+    message: str
+    payment_status: str
+    subscription_status: SubscriptionStatus
+
+
+class EsewaInitiateResponse(BaseModel):
+    payment_url: str
+    amount: str
+    tax_amount: str
+    total_amount: str
+    transaction_uuid: str
+    product_code: str
+    product_service_charge: str
+    product_delivery_charge: str
+    success_url: str
+    failure_url: str
+    signed_field_names: str
+    signature: str
+
+
+class EsewaVerifyRequest(BaseModel):
+    transaction_uuid: Optional[str] = None
+    data: Optional[str] = None
+    callback_data: Dict[str, Any] = Field(default_factory=dict)
+
+
+class EsewaVerifyResponse(BaseModel):
+    success: bool
+    message: str
+    payment_status: str
+    subscription_status: SubscriptionStatus
+    reference_id: Optional[str] = None
+
+
+class PaymentStatusResponse(BaseModel):
+    pidx: str
+    status: str
+    plan: str
+    amount_paisa: int
+    transaction_id: Optional[str] = None
 
 
 class NoteCreate(BaseModel):

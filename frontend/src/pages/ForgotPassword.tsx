@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Loader2, AlertCircle, CheckCircle } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { Loader2, CheckCircle } from 'lucide-react'
 import Logo from '../components/Logo'
-import GoogleButton from '../components/auth/GoogleButton'
 import { authApi } from '../lib/api'
 
 export default function ForgotPassword() {
@@ -11,50 +9,15 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
-  const [isGoogleAccount, setIsGoogleAccount] = useState(false)
-  const [checkingAccount, setCheckingAccount] = useState(false)
-
-  const checkGoogleAccount = async (emailToCheck: string) => {
-    if (!emailToCheck || !emailToCheck.includes('@')) return
-    
-    setCheckingAccount(true)
-    try {
-      const response = await authApi.checkGoogleAccount(emailToCheck)
-      setIsGoogleAccount(response.data.is_google_account)
-    } catch (err) {
-      console.error('Failed to check account type:', err)
-    } finally {
-      setCheckingAccount(false)
-    }
-  }
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newEmail = e.target.value
-    setEmail(newEmail)
+    setEmail(e.target.value)
     setError('')
-    
-    if (newEmail.includes('@') && newEmail.includes('.')) {
-      const timeoutId = setTimeout(() => {
-        checkGoogleAccount(newEmail)
-      }, 500)
-      return () => clearTimeout(timeoutId)
-    }
-  }
-
-  const handleGoogleLogin = () => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    window.location.href = `${apiUrl}/api/auth/google`
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    
-    await checkGoogleAccount(email)
-    if (isGoogleAccount) {
-      return
-    }
-    
     setLoading(true)
 
     try {
@@ -128,54 +91,20 @@ export default function ForgotPassword() {
               />
             </div>
 
-            {/* Google Account Warning */}
-            {isGoogleAccount && !checkingAccount && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-md bg-tertiary-light p-4"
-              >
-                <div className="flex">
-                  <AlertCircle className="h-5 w-5 text-tertiary" />
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-tertiary">
-                      Google Sign-In Account
-                    </h3>
-                    <div className="mt-2 text-sm text-tertiary">
-                      <p>
-                        This account uses Google Sign-In. You cannot reset the password here.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mt-4">
-                  <GoogleButton 
-                    label="Continue with Google"
-                    onClick={handleGoogleLogin}
-                    isLoading={loading}
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            {/* Only show reset button if not a Google account */}
-            {!isGoogleAccount && (
-              <button
-                type="submit"
-                disabled={loading || checkingAccount}
-                className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  'Send Reset Link'
-                )}
-              </button>
-            )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                'Send Reset Link'
+              )}
+            </button>
           </form>
 
           <div className="mt-6 text-center">

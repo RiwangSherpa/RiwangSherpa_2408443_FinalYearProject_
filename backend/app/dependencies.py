@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, UserDailyUsage, SubscriptionPlan
 from app.services.auth_service import verify_token
+from app.services.subscription_service import has_active_pro_subscription
 
 security = HTTPBearer()
 
@@ -47,7 +48,7 @@ def get_current_user(
 
 def require_pro_subscription(user: User = Depends(get_current_user)) -> User:
     """Dependency that requires Pro subscription"""
-    if user.subscription_plan != SubscriptionPlan.PRO:
+    if not has_active_pro_subscription(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Pro subscription required. Upgrade to access this feature."
@@ -61,7 +62,7 @@ def check_daily_limit(feature: str, limit: int):
         user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
     ) -> User:
-        if user.subscription_plan == SubscriptionPlan.PRO:
+        if has_active_pro_subscription(user):
             return user
         
         today = date.today()
@@ -108,7 +109,7 @@ async def track_usage(user_id: int, feature: str, db: Session):
 
 def check_active_goals_limit(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
     """Check if free user has reached active goals limit"""
-    if user.subscription_plan == SubscriptionPlan.PRO:
+    if has_active_pro_subscription(user):
         return user
     
     from app.models import Goal

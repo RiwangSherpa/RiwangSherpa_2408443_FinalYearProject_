@@ -25,6 +25,7 @@ import {
 import StudyMarkdownRenderer from '../components/brainstorm/StudyMarkdownRenderer'
 import { brainstormApi, flashcardsApi, mindmapsApi } from '../lib/api'
 import type { BrainstormFile, BrainstormMessage, BrainstormSession } from '../types'
+import { useAchievementNotifications } from '../hooks/useAchievementNotifications'
 
 const ACCEPTED_TYPES = '.pdf,.png,.jpg,.jpeg,.txt,.md,.docx'
 const MAX_TITLE_LENGTH = 80
@@ -48,6 +49,7 @@ function getApiErrorDetails(err: any): { message: string; partialContent?: strin
 
 export default function Brainstorm() {
   const navigate = useNavigate()
+  const { checkForAchievements } = useAchievementNotifications()
   const [sessions, setSessions] = useState<BrainstormSession[]>([])
   const [activeSession, setActiveSession] = useState<BrainstormSession | null>(null)
   const [messages, setMessages] = useState<BrainstormMessage[]>([])
@@ -141,6 +143,7 @@ export default function Brainstorm() {
       setMessages([])
       setFiles([])
       setSelectedFileIds([])
+      await checkForAchievements()
       return session
     } catch (err) {
       console.error('Failed to create Brainstorm session:', err)
@@ -235,6 +238,7 @@ export default function Brainstorm() {
       })
       await loadSession(targetSession.id)
       await loadSessions()
+      await checkForAchievements()
     } catch (err: any) {
       console.error('Upload failed:', err)
       setError(err.response?.data?.detail || 'Upload failed.')
@@ -314,6 +318,7 @@ export default function Brainstorm() {
           title: `${activeSession.title} Mindmap`,
         })
         navigate('/mindmap')
+        await checkForAchievements()
         return
       } else {
         await flashcardsApi.generate({
@@ -323,6 +328,7 @@ export default function Brainstorm() {
           count: responseLength === 'detailed' ? 18 : responseLength === 'short' ? 8 : 12,
         })
         navigate('/flashcards')
+        await checkForAchievements()
         return
       }
       await loadSession(activeSession.id)

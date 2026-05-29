@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from app.database import get_db
 from app import models, schemas
 from app.routers.auth import get_current_user
+from app.services.gamification import GamificationService
 
 router = APIRouter()
 
@@ -61,6 +62,7 @@ async def create_progress(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to update streak: {str(e)}")
+    GamificationService(db).check_and_award_achievements(current_user.id)
     
     return db_progress
 
@@ -210,8 +212,10 @@ async def record_session(
         streak.study_time_minutes += minutes
     
     db.commit()
+    gamification_service = GamificationService(db)
+    new_achievements = gamification_service.check_and_award_achievements(current_user.id)
     
-    return {"success": True, "message": "Session recorded", "minutes_added": minutes}
+    return {"success": True, "message": "Session recorded", "minutes_added": minutes, "new_achievements": new_achievements}
 
 
 @router.post("/track-time")
@@ -242,11 +246,14 @@ async def track_study_time(
     
     db.commit()
     db.refresh(streak)
+    gamification_service = GamificationService(db)
+    new_achievements = gamification_service.check_and_award_achievements(current_user.id)
     
     return {
         "success": True, 
         "total_minutes_today": streak.study_time_minutes,
-        "minutes_added": minutes
+        "minutes_added": minutes,
+        "new_achievements": new_achievements
     }
 
 
@@ -287,36 +294,55 @@ async def get_study_history(
 @router.get("/streak-history")
 async def get_streak_history(
     days: int = 30,
+    start_date: str | None = None,
+    end_date: str | None = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Get streak history for the last N days"""
+    """Get streak history for a date range or the last N days."""
     today = datetime.utcnow().date()
-    start_date = today - timedelta(days=days)
+    if start_date and end_date:
+        try:
+            range_start = datetime.strptime(start_date, "%Y-%m-%d").date()
+            range_end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Dates must use YYYY-MM-DD format") from exc
+    else:
+        range_end = today
+        range_start = today - timedelta(days=max(1, days) - 1)
+
+    if range_start > range_end:
+        raise HTTPException(status_code=400, detail="start_date must be before end_date")
+    if (range_end - range_start).days > 370:
+        raise HTTPException(status_code=400, detail="Date range cannot exceed 370 days")
     
     streaks = db.query(models.StudyStreak).filter(
         models.StudyStreak.user_id == current_user.id,
-        func.date(models.StudyStreak.date) >= start_date,
-        func.date(models.StudyStreak.date) <= today
+        func.date(models.StudyStreak.date) >= range_start,
+        func.date(models.StudyStreak.date) <= range_end
     ).all()
     
     streak_map = {}
     for streak in streaks:
         date_str = streak.date.date().isoformat() if isinstance(streak.date, datetime) else str(streak.date)
-        streak_map[date_str] = streak.study_time_minutes
+        streak_map[date_str] = {
+            "minutes": streak.study_time_minutes,
+            "goals_worked_on": streak.goals_worked_on or []
+        }
     
     history = []
     current_streak = 0
     
     studied_days = set()
-    for i in range(days):
-        date = today - timedelta(days=(days - 1 - i))
+    total_days = (range_end - range_start).days + 1
+    for i in range(total_days):
+        date = range_start + timedelta(days=i)
         date_str = date.isoformat()
-        if date_str in streak_map and streak_map[date_str] > 0:
+        if date_str in streak_map and streak_map[date_str]["minutes"] > 0:
             studied_days.add(date_str)
     
-    for i in range(days):
-        date = today - timedelta(days=(days - 1 - i))
+    for i in range(total_days):
+        date = range_start + timedelta(days=i)
         date_str = date.isoformat()
         studied = date_str in studied_days
         
@@ -325,11 +351,14 @@ async def get_streak_history(
         else:
             current_streak = 0
         
+        day_data = streak_map.get(date_str, {"minutes": 0, "goals_worked_on": []})
         history.append({
             "date": date_str,
             "streakDays": current_streak,
             "day": date.strftime("%a"),
-            "studied": studied
+            "studied": studied,
+            "minutes": day_data["minutes"],
+            "goals_worked_on": day_data["goals_worked_on"]
         })
     
     return {"history": history}

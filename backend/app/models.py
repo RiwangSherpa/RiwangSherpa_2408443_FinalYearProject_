@@ -2,7 +2,7 @@
 SQLAlchemy database models
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime, Text, ForeignKey, JSON, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime, Text, ForeignKey, JSON, Enum as SQLEnum, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -123,6 +123,17 @@ class User(Base):
     provider = Column(String(20), default="local")
     avatar_url = Column(String(500), nullable=True)
     theme_preference = Column(String(20), nullable=True, default="light")
+    email_notifications = Column(Boolean, default=False)
+    study_reminders = Column(Boolean, default=True)
+    achievement_notifications = Column(Boolean, default=True)
+    weekly_summary = Column(Boolean, default=True)
+    daily_study_goal_minutes = Column(Integer, default=30)
+    weekly_study_goal_minutes = Column(Integer, default=180)
+    preferred_learning_style = Column(String(30), default="balanced")
+    default_quiz_difficulty = Column(String(20), default="medium")
+    default_quiz_count = Column(Integer, default=10)
+    default_flashcard_count = Column(Integer, default=12)
+    ai_explanation_style = Column(String(30), default="step-by-step")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
@@ -134,6 +145,7 @@ class User(Base):
     brainstorm_files = relationship("BrainstormFile", back_populates="user", cascade="all, delete-orphan")
     mindmaps = relationship("Mindmap", back_populates="user", cascade="all, delete-orphan")
     flashcard_decks = relationship("FlashcardDeck", back_populates="user", cascade="all, delete-orphan")
+    subscription_payments = relationship("SubscriptionPayment", back_populates="user", cascade="all, delete-orphan")
 
 class PasswordResetToken(Base):
     """Password reset tokens"""
@@ -290,6 +302,31 @@ class BrainstormSession(Base):
     )
 
 
+class SubscriptionPayment(Base):
+    """Payment records for subscription checkout providers."""
+    __tablename__ = "subscription_payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    pidx = Column(String(120), unique=True, nullable=True, index=True)
+    transaction_id = Column(String(120), nullable=True, index=True)
+    transaction_uuid = Column(String(120), unique=True, nullable=True, index=True)
+    product_code = Column(String(60), nullable=True, index=True)
+    amount = Column(Float, nullable=True)
+    tax_amount = Column(Float, nullable=True, default=0)
+    total_amount = Column(Float, nullable=True)
+    reference_id = Column(String(120), nullable=True, index=True)
+    amount_paisa = Column(Integer, nullable=True)
+    plan = Column(String(20), nullable=False, default=SubscriptionPlan.PRO.value)
+    status = Column(String(30), nullable=False, default="initiated", index=True)
+    provider = Column(String(30), nullable=False, default="khalti")
+    raw_response = Column(JSON, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="subscription_payments")
+
+
 class BrainstormMessage(Base):
     """Individual chat messages inside a Brainstorm session."""
     __tablename__ = "brainstorm_messages"
@@ -372,6 +409,9 @@ class Achievement(Base):
 class UserAchievement(Base):
     """User's earned achievements"""
     __tablename__ = "user_achievements"
+    __table_args__ = (
+        UniqueConstraint("user_id", "achievement_id", name="uq_user_achievement"),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
