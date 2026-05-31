@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+PASSWORD_RESET_RESPONSE = "If an account exists, we have sent password reset instructions."
 
 
 def get_current_user(
@@ -164,26 +165,34 @@ async def forgot_password(
 ):
     """Request password reset"""
 
+    logger.info("Forgot password requested for: %s", request.email)
     user = get_user_by_email(db, request.email)
+    logger.info("User found: %s", "yes" if user else "no")
 
-    if not user or user.provider == "google" or not user.hashed_password:
-        logger.info(
-            "Password reset requested for non-resettable email: %s",
-            request.email,
-        )
-        return {
-            "message": "If the email exists, a password reset link has been sent."
-        }
+    if not user:
+        logger.info("Password reset skipped: user not found")
+        return {"message": PASSWORD_RESET_RESPONSE}
 
-    reset_token = create_password_reset_token_for_user(db, user)
+    logger.info("Provider: %s", user.provider or "local")
+    logger.info("Has password: %s", "yes" if user.hashed_password else "no")
+
+    if not user.hashed_password:
+        logger.info("Password reset skipped: account is not resettable")
+        return {"message": PASSWORD_RESET_RESPONSE}
+
+    try:
+        reset_token = create_password_reset_token_for_user(db, user)
+        logger.info("Reset token created: yes")
+    except Exception:
+        db.rollback()
+        logger.exception("Reset token created: no")
+        return {"message": PASSWORD_RESET_RESPONSE}
+
     reset_link = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={reset_token}"
-    send_password_reset_email_async(user.email, reset_link)
+    email_sent = await send_password_reset_email_async(user.email, reset_link)
+    logger.info("Email send result: %s", "success" if email_sent else "failure")
 
-    logger.info("Password reset email queued for %s", user.email)
-
-    return {
-        "message": "If the email exists, a password reset link has been sent."
-    }
+    return {"message": PASSWORD_RESET_RESPONSE}
 
 
 @router.post(

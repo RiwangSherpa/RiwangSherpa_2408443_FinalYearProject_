@@ -4,6 +4,7 @@ SMTP email delivery for Study Buddy account and notification emails.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import smtplib
 import threading
@@ -22,6 +23,13 @@ logger = logging.getLogger(__name__)
 
 class EmailDeliveryError(RuntimeError):
     """Raised when SMTP delivery cannot be completed."""
+
+
+def _safe_error_message(exc: Exception) -> str:
+    message = str(exc)
+    if settings.SMTP_PASSWORD:
+        message = message.replace(settings.SMTP_PASSWORD, "[redacted]")
+    return f"{type(exc).__name__}: {message}"
 
 
 class EmailService:
@@ -107,7 +115,7 @@ def _run_safely(description: str, callback) -> None:
     try:
         callback()
     except Exception as exc:
-        logger.error("%s failed: %s", description, exc)
+        logger.error("%s failed: %s", description, _safe_error_message(exc))
 
 
 def send_in_background(description: str, callback) -> None:
@@ -115,11 +123,21 @@ def send_in_background(description: str, callback) -> None:
     thread.start()
 
 
-def send_password_reset_email_async(to_email: str, reset_link: str) -> None:
-    send_in_background(
-        "Password reset email",
-        lambda: EmailService().send_password_reset_email(to_email, reset_link),
-    )
+async def send_password_reset_email_async(to_email: str, reset_link: str) -> bool:
+    service = EmailService()
+    logger.info("SMTP configured: %s", "yes" if service.is_configured else "no")
+    if not service.is_configured:
+        logger.warning("Password reset email not sent: SMTP not configured")
+        return False
+
+    try:
+        await asyncio.to_thread(service.send_password_reset_email, to_email, reset_link)
+    except Exception as exc:
+        logger.error("Password reset email send failed for %s: %s", to_email, _safe_error_message(exc))
+        return False
+
+    logger.info("Password reset email sent for %s", to_email)
+    return True
 
 
 def send_notifications_enabled_email_async(to_email: str) -> None:

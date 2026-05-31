@@ -6,6 +6,7 @@ import { authApi } from '../lib/api'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
+  const [submittedEmail, setSubmittedEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
@@ -22,6 +23,7 @@ export default function ForgotPassword() {
 
     try {
       await authApi.forgotPassword(email)
+      setSubmittedEmail(email)
       setSuccess(true)
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to send reset email. Please try again.')
@@ -43,7 +45,7 @@ export default function ForgotPassword() {
             </div>
             <h2 className="text-2xl font-bold text-neutral-900 dark:text-dark-text-primary mb-2 font-heading transition-colors">Check your email</h2>
             <p className="text-neutral-600 dark:text-dark-text-secondary mb-6 transition-colors">
-              If an account with {email} exists, we've sent password reset instructions.
+              If an account with {submittedEmail} exists, we've sent password reset instructions.
             </p>
             
             <Link
