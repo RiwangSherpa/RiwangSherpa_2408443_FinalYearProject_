@@ -189,6 +189,9 @@ async def forgot_password(
         return {"message": PASSWORD_RESET_RESPONSE}
 
     reset_link = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={reset_token}"
+    if settings.ENABLE_DEV_RESET_LINKS:
+        logger.warning("DEV ONLY reset link for %s: %s", user.email, reset_link)
+
     email_sent = await send_password_reset_email_async(user.email, reset_link)
     logger.info("Email send result: %s", "success" if email_sent else "failure")
 

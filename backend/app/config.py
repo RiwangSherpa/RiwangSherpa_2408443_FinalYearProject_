@@ -91,6 +91,7 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "Study Buddy"
     SMTP_USE_TLS: bool = True
     SMTP_TIMEOUT_SECONDS: int = 10
+    ENABLE_DEV_RESET_LINKS: bool = False
 
     KHALTI_SECRET_KEY: str = ""
     KHALTI_PUBLIC_KEY: str = ""
